@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -197,9 +197,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as ClaimPayload
 
     // Save to Supabase (fire-and-forget — don't block email sending)
+    const db = getSupabase()
     const token = body.token ?? null
-    if (token) {
-      supabase.from('claims').update({
+    if (db && token) {
+      db.from('claims').update({
         status: 'submitted',
         first_name: body.firstName,
         last_name: body.lastName,
@@ -216,9 +217,9 @@ export async function POST(req: NextRequest) {
       }).eq('token', token).then(({ error }) => {
         if (error) console.error('Supabase submit update error:', error)
       })
-    } else {
+    } else if (db) {
       // No token yet (edge case: user opened directly) — insert fresh record
-      supabase.from('claims').insert({
+      db.from('claims').insert({
         token: Math.random().toString(36).substring(2, 8).toUpperCase(),
         status: 'submitted',
         flight_data: body.flight,
