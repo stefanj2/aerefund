@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { lookupFlight } from '@/lib/flight-api'
-import { calculateCompensation, formatAmount } from '@/lib/compensation'
+import { calculateCompensation } from '@/lib/compensation'
 import FunnelNav from '@/components/FunnelNav'
 import type { FlightData } from '@/lib/types'
-import type { CompensationResult } from '@/lib/compensation'
+
 
 // EC 261: first leg with delay is the responsible carrier (first-carrier principle)
 function findResponsibleLeg(legs: FlightData[]): FlightData {
@@ -35,7 +35,6 @@ export default function LoadingScreen() {
     isConnecting?: boolean
   } | null>(null)
   const [notFoundFlight, setNotFoundFlight] = useState<FlightData | null>(null)
-  const [result, setResult] = useState<CompensationResult | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -127,9 +126,8 @@ export default function LoadingScreen() {
             'vv_result',
             JSON.stringify({ flight: { ...flightData, distanceKm: effectiveDistanceKm }, compensation })
           )
-          setResult(compensation)
           setState('done')
-          timeoutIds.push(setTimeout(() => { if (!cancelled) router.push('/uitkomst') }, 2200))
+          timeoutIds.push(setTimeout(() => { if (!cancelled) router.push('/uitkomst') }, 800))
         })
       }
     }
@@ -232,9 +230,7 @@ export default function LoadingScreen() {
   }
 
   // ── Laden / Klaar ──────────────────────────────────────────────────────────
-  const spinnerColor = state === 'done'
-    ? (result?.eligible ? 'var(--green)' : 'var(--text-muted)')
-    : 'var(--blue)'
+  const spinnerColor = state === 'done' ? 'var(--green)' : 'var(--blue)'
 
   return (
     <div style={{ minHeight: 'calc(100vh - 59px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.25rem' }}>
@@ -258,15 +254,9 @@ export default function LoadingScreen() {
         {/* Center icon */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {state === 'done' ? (
-            result?.eligible ? (
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <path d="M7 14l5 5 9-9" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M16 6L6 16M6 6l10 10" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            )
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path d="M7 14l5 5 9-9" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           ) : (
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
               <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="var(--blue)" />
@@ -315,51 +305,13 @@ export default function LoadingScreen() {
                 color: isDone ? 'var(--green)' : isActive ? 'var(--text)' : 'var(--text-muted)',
                 transition: 'color 0.3s',
               }}>
-                {i === STEPS.length - 1 && state === 'done' && result
-                  ? result.eligible
-                    ? `${formatAmount(result.amountPerPerson)} compensatie gevonden`
-                    : 'Geen compensatierecht vastgesteld'
-                  : step.label}
+                {step.label}
               </span>
             </div>
           )
         })}
       </div>
 
-      {/* Result reveal */}
-      {state === 'done' && result && (
-        <div style={{ marginTop: '2.5rem', textAlign: 'center' }} className="animate-fade-in">
-          {result.eligible ? (
-            <div style={{
-              background: '#fff', border: '1.5px solid var(--green-border)',
-              borderRadius: '16px', padding: '1.5rem 2rem',
-              boxShadow: '0 4px 24px rgba(21,128,61,0.12)',
-            }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--green)', marginBottom: '0.375rem' }}>
-                Compensatierecht gevonden
-              </p>
-              <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: '3.5rem', color: 'var(--green)', lineHeight: 1, margin: 0 }} className="animate-count">
-                {formatAmount(result.amountPerPerson)}
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                per persoon · je wordt doorgestuurd…
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              background: '#fff', border: '1px solid var(--border)',
-              borderRadius: '12px', padding: '1.25rem 1.5rem',
-            }}>
-              <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-sub)', marginBottom: '0.375rem' }}>
-                Helaas geen recht op compensatie
-              </p>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '280px', lineHeight: 1.55 }}>
-                {result.reason}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
       <style jsx>{`
         @keyframes loading-spin {
