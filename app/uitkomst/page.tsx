@@ -111,7 +111,7 @@ export default function UitkomstPage() {
     return (
       <main className="min-h-screen" style={{ background: 'var(--bg)' }}>
         <FunnelNav step={3} />
-        <div className="container pt-14 pb-10">
+        <div className="container pt-24 pb-10">
           <div style={{ maxWidth: '380px', margin: '0 auto', textAlign: 'center' }}>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
