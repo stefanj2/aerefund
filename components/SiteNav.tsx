@@ -21,8 +21,11 @@ export default function SiteNav() {
           </div>
         </Link>
 
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
         {/* Nav links */}
-        <nav style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        <nav style={{ display: 'flex', alignItems: 'center', marginRight: '1rem' }}>
           <Link href="/passagiersrechten" className="nav-link">Passagiersrechten</Link>
           <Link href="/faq" className="nav-link">FAQ</Link>
           <Link href="/over-ons" className="nav-link">Over ons</Link>
