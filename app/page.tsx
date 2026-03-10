@@ -833,7 +833,7 @@ export default function Home() {
             <div>
               <div style={{ height: '40px', overflow: 'hidden', marginBottom: '1rem', mixBlendMode: 'screen' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo-aerefund.png" alt="Aerefund" style={{ height: '90px', marginTop: '-25px', width: 'auto', display: 'block', filter: 'invert(1)' }} />
+                <img src="/logo-aerefund.png" alt="Aerefund" style={{ height: '90px', marginTop: '-25px', width: 'auto', display: 'block', filter: 'invert(1) grayscale(1) brightness(2)' }} />
               </div>
               <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, maxWidth: '220px' }}>
                 Wij helpen passagiers bij het claimen van compensatie voor vertraagde en geannuleerde vluchten.
