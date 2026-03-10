@@ -864,7 +864,7 @@ export default function Home() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem',
           }}>
             <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
-              © 2026 Aerefund.nl — Gebaseerd op EU Verordening EC 261/2004
+              © 2026 Aerefund — handelsnaam van Dune Legal · EC 261/2004
             </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
               <a href="/algemene-voorwaarden" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Algemene voorwaarden</a>
