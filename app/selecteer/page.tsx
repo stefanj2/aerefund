@@ -8,7 +8,8 @@ import AirportCombobox from '@/components/AirportCombobox'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
 import { suggestVia } from '@/lib/via-suggestions'
-import type { RouteFlightOption, RouteSearchParams } from '@/lib/types'
+import { calculateCompensation } from '@/lib/compensation'
+import type { RouteFlightOption, RouteSearchParams, CancellationNotice, CauseType, FlightType } from '@/lib/types'
 
 type LoadState = 'loading' | 'loaded' | 'error'
 type StopoverAnswer = 'yes' | 'no' | null
@@ -55,8 +56,9 @@ function AirlineLogo({ iata, name }: { iata: string; name: string }) {
   )
 }
 
-function FlightCard({ flight, onSelect, isConnecting, isSelected = false }: {
+function FlightCard({ flight, onSelect, isConnecting, isSelected = false, compensation }: {
   flight: RouteFlightOption; onSelect: () => void; isConnecting: boolean; isSelected?: boolean
+  compensation?: { eligible: boolean; amountPerPerson: number } | null
 }) {
   const [hovered, setHovered] = useState(false)
   const isDelayed = (flight.delayMinutes != null && flight.delayMinutes >= 15) || flight.status?.toLowerCase().includes('delay')
@@ -118,6 +120,17 @@ function FlightCard({ flight, onSelect, isConnecting, isSelected = false }: {
           borderRadius: '4px', padding: '0.2rem 0.5rem', flexShrink: 0,
         }}>{statusLabel}</span>
       )}
+      {compensation && (
+        <span style={{
+          fontSize: '0.72rem', fontWeight: 800, flexShrink: 0,
+          color: compensation.eligible ? 'var(--green)' : 'var(--text-muted)',
+          background: compensation.eligible ? 'var(--green-dim)' : 'rgba(0,0,0,0.04)',
+          border: `1px solid ${compensation.eligible ? 'var(--green-border)' : 'var(--border)'}`,
+          borderRadius: '4px', padding: '0.2rem 0.5rem',
+        }}>
+          {compensation.eligible ? `€${compensation.amountPerPerson}` : 'Geen recht'}
+        </span>
+      )}
       {isSelected ? (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
           <circle cx="10" cy="10" r="9" fill="var(--blue)" />
@@ -155,20 +168,72 @@ export default function SelecteerPage() {
 
   // Cache: key = "FROM:TO:DATE" → prevents re-fetching unchanged legs
   const legCacheRef = useRef<Map<string, RouteFlightOption[]>>(new Map())
+  // Track last direct-flight search to avoid duplicate calls
+  const lastDirectSearchRef = useRef('')
 
   // Direct flight state
   const [flights, setFlights] = useState<RouteFlightOption[]>([])
   const [loadState, setLoadState] = useState<LoadState>('loaded')
+  const [flightCompensations, setFlightCompensations] = useState<Record<string, { eligible: boolean; amountPerPerson: number }>>( {})
 
   // Manual entry (direct only)
   const [showManual, setShowManual] = useState(false)
   const [manualFlight, setManualFlight] = useState('')
+
+  // Eligibility refiners — persisted to vv_route_search
+  const [cancellationNotice, setCancellationNotice] = useState<CancellationNotice | null>(null)
+  const [causeType, setCauseType] = useState<CauseType | null>(null)
+
+  function updateRouteParam<K extends keyof RouteSearchParams>(key: K, value: RouteSearchParams[K]) {
+    setParams(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, [key]: value }
+      sessionStorage.setItem('vv_route_search', JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  function handleCancellationNotice(val: CancellationNotice) {
+    setCancellationNotice(val)
+    updateRouteParam('cancellationNotice', val)
+  }
+
+  function handleCauseType(val: CauseType) {
+    setCauseType(val)
+    updateRouteParam('causeType', val)
+  }
+
+  function handleTypeChange(newType: FlightType) {
+    if (!params) return
+    // Reset all flight state
+    setFlights([])
+    setFlightCompensations({})
+    setLoadState('loaded')
+    setStopover(null)
+    setViaAirports([])
+    setAddingVia(false)
+    setLegFlights([])
+    setLegLoadStates([])
+    setSelectedLegs([])
+    setManualLegs([])
+    setManualFlight('')
+    setShowManual(false)
+    lastDirectSearchRef.current = ''
+    // Reset eligibility refiners
+    setCancellationNotice(null)
+    setCauseType(null)
+    const updated: RouteSearchParams = { ...params, type: newType, cancellationNotice: undefined, causeType: undefined }
+    setParams(updated)
+    sessionStorage.setItem('vv_route_search', JSON.stringify(updated))
+  }
 
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_route_search')
     if (!raw) { router.replace('/'); return }
     const p = JSON.parse(raw) as RouteSearchParams
     setParams(p)
+    if (p.cancellationNotice) setCancellationNotice(p.cancellationNotice)
+    if (p.causeType) setCauseType(p.causeType)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Search direct flights
@@ -177,7 +242,18 @@ export default function SelecteerPage() {
     setFlights([])
     fetch(`/api/route-search?origin=${p.origin}&destination=${p.destination}&date=${p.date}`)
       .then(r => r.json())
-      .then((data: RouteFlightOption[]) => { setFlights(Array.isArray(data) ? data : []); setLoadState('loaded') })
+      .then((data: RouteFlightOption[]) => {
+        const safe = Array.isArray(data) ? data : []
+        setFlights(safe)
+        setLoadState('loaded')
+        const comps: Record<string, { eligible: boolean; amountPerPerson: number }> = {}
+        safe.forEach(f => {
+          const c = calculateCompensation(f.distanceKm ?? null, f.delayMinutes ?? null, p.type, f.delayMinutes != null,
+            { origin: f.origin, destination: f.destination, cancellationNotice: p.cancellationNotice, causeType: p.causeType })
+          comps[f.flightNumber] = { eligible: c.eligible, amountPerPerson: c.amountPerPerson }
+        })
+        setFlightCompensations(comps)
+      })
       .catch(() => setLoadState('error'))
   }
 
@@ -252,11 +328,12 @@ export default function SelecteerPage() {
     const updated = { ...params, date: newDate }
     setParams(updated)
     sessionStorage.setItem('vv_route_search', JSON.stringify(updated))
-    if (newDate && stopover === 'no') searchFlights(updated)
+    // Direct-flight search is handled by the useEffect below
     // Via-leg fetching is handled by the useEffect that watches params.date + viaIata
   }
 
   function handleStopoverAnswer(answer: StopoverAnswer) {
+    lastDirectSearchRef.current = '' // reset so useEffect re-triggers if needed
     setStopover(answer)
     setViaAirports([])
     setAddingVia(answer === 'yes')
@@ -265,8 +342,17 @@ export default function SelecteerPage() {
     setSelectedLegs([])
     setManualLegs([])
     setFlights([])
-    if (answer === 'no' && params?.date) searchFlights(params)
+    setFlightCompensations({})
   }
+
+  // Single source of truth: search direct flights whenever stopover='no' + date is set
+  useEffect(() => {
+    if (stopover !== 'no' || !params?.date) return
+    const key = `${params.origin}|${params.destination}|${params.date}`
+    if (key === lastDirectSearchRef.current) return
+    lastDirectSearchRef.current = key
+    searchFlights(params)
+  }, [stopover, params?.date, params?.origin, params?.destination]) // eslint-disable-line
 
   function addViaAirport(iata: string) {
     const next = [...viaAirports, iata]
@@ -324,6 +410,36 @@ export default function SelecteerPage() {
     }))
     router.push('/laden')
   }, [params, manualFlight, router])
+
+  function goToMultiResults() {
+    if (!params || flights.length === 0) return
+    const results = flights.map(f => {
+      const comp = calculateCompensation(f.distanceKm ?? null, f.delayMinutes ?? null, params.type, f.delayMinutes != null,
+        { origin: f.origin, destination: f.destination, cancellationNotice: params.cancellationNotice, causeType: params.causeType })
+      return {
+        flight: {
+          flightNumber: f.flightNumber,
+          date: params.date,
+          type: params.type,
+          airline: f.airline,
+          iataPrefix: f.iataPrefix,
+          origin: f.origin,
+          destination: f.destination,
+          scheduledDeparture: null,
+          scheduledArrival: null,
+          actualArrival: null,
+          delayMinutes: f.delayMinutes,
+          distanceKm: f.distanceKm,
+          found: true,
+        },
+        compensation: comp,
+      }
+    })
+    sessionStorage.setItem('vv_multi_results', JSON.stringify(results))
+    sessionStorage.removeItem('vv_result')
+    sessionStorage.removeItem('vv_token')
+    router.push('/uitkomst')
+  }
 
   const proceedWithConnecting = useCallback(() => {
     if (!params) return
@@ -430,8 +546,107 @@ export default function SelecteerPage() {
           </div>
         )}
 
-        {/* ── STAP 1: Tussenstop vraag ─────────────────────────────────────── */}
+        {/* ── STAP 0: Wat is de reden? ─────────────────────────────────────── */}
         {params && (
+          <div style={{ marginBottom: '1.75rem' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
+              Wat is de reden van je claim?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {([
+                {
+                  val: 'vertraagd' as FlightType,
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4" />
+                      <path d="M9 5v4l2.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ),
+                  label: 'Vertraging',
+                  sub: 'Vlucht arriveerde meer dan 3 uur te laat',
+                },
+                {
+                  val: 'geannuleerd' as FlightType,
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M3 15L15 3M10.5 3.5l4 1-1 4M7.5 14.5l-4-1 1-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ),
+                  label: 'Annulering',
+                  sub: 'Vlucht werd geannuleerd door de airline',
+                },
+                {
+                  val: 'geweigerd' as FlightType,
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <circle cx="9" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+                      <path d="M3 15c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      <path d="M13 8l3 3M16 8l-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  ),
+                  label: 'Instapweigering',
+                  sub: 'Je werd geweigerd door overboeking of een andere reden',
+                },
+              ]).map(opt => {
+                const isActive = params.type === opt.val
+                return (
+                  <button key={opt.val} type="button" onClick={() => handleTypeChange(opt.val)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.875rem',
+                      padding: '0.875rem 1.125rem', borderRadius: '10px', cursor: 'pointer',
+                      border: `2px solid ${isActive ? 'var(--blue)' : 'var(--border)'}`,
+                      background: isActive ? 'var(--blue-light)' : '#fff',
+                      transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <span style={{ color: isActive ? 'var(--blue)' : 'var(--text-muted)', flexShrink: 0 }}>
+                      {opt.icon}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: isActive ? 'var(--blue)' : 'var(--text)' }}>
+                        {opt.label}
+                      </div>
+                      <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                        {opt.sub}
+                      </div>
+                    </div>
+                    {isActive && (
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
+                        <circle cx="9" cy="9" r="8" fill="var(--blue)" />
+                        <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── STAP 1: Datum ────────────────────────────────────────────────── */}
+        {params && (
+          <div style={{ marginBottom: '1.75rem' }}>
+            <label style={{
+              display: 'block', fontSize: '0.72rem', fontWeight: 700,
+              letterSpacing: '0.05em', textTransform: 'uppercase',
+              color: 'var(--text-sub)', marginBottom: '0.4rem',
+            }}>
+              Wanneer vloog je?
+            </label>
+            <input
+              type="date"
+              value={params?.date ?? ''}
+              onChange={e => handleDateChange(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              min={new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              className="input-field"
+              style={{ colorScheme: 'light', maxWidth: '220px' }}
+            />
+          </div>
+        )}
+
+        {/* ── STAP 2: Tussenstop vraag — niet relevant bij annulering ─────── */}
+        {params && params.type !== 'geannuleerd' && (
           <div style={{ marginBottom: '1.75rem' }}>
             <p style={{
               fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em',
@@ -592,43 +807,129 @@ export default function SelecteerPage() {
           </div>
         )}
 
-        {/* ── STAP 2: Datum ────────────────────────────────────────────────── */}
-        {stopover !== null && (
+        {/* ── STAP 3: Aanvullende vragen (annulering / oorzaak) ───────────── */}
+
+        {/* Vraag 3a: Annuleringsmelding — alleen bij geannuleerd */}
+        {params && params.type === 'geannuleerd' && (
           <div style={{ marginBottom: '1.75rem' }}>
-            <label style={{
-              display: 'block', fontSize: '0.72rem', fontWeight: 700,
-              letterSpacing: '0.05em', textTransform: 'uppercase',
-              color: 'var(--text-sub)', marginBottom: '0.4rem',
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
+              Wanneer werd je op de hoogte gesteld van de annulering?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {([
+                { val: 'lt14days' as CancellationNotice, label: 'Minder dan 14 dagen voor vertrek (of op de dag zelf)', sub: 'Je hebt recht op compensatie' },
+                { val: 'gt14days' as CancellationNotice, label: '14 dagen of meer voor vertrek', sub: 'Bij tijdige melding geldt geen compensatierecht' },
+              ]).map(opt => (
+                <button key={opt.val} type="button" onClick={() => handleCancellationNotice(opt.val)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                    gap: '0.15rem', padding: '0.875rem 1.125rem', borderRadius: '10px', cursor: 'pointer',
+                    border: `2px solid ${cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'var(--red)' : 'var(--blue)') : 'var(--border)'}`,
+                    background: cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'rgba(220,38,38,0.05)' : 'var(--blue-light)') : '#fff',
+                    transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'var(--red)' : 'var(--blue)') : 'var(--text)' }}>
+                    {opt.label}
+                  </span>
+                  <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+            {cancellationNotice === 'gt14days' && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--red)', margin: 0, lineHeight: 1.5 }}>
+                  <strong>Waarschijnlijk geen recht op compensatie</strong> bij aankondiging ≥ 14 dagen van tevoren (EC 261/2004 art. 5(1)(c)). Je kunt wel doorgaan als je twijfelt — een jurist beoordeelt je zaak kosteloos.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Vraag 3b: Oorzaak — bij vertraagd of geannuleerd */}
+        {params && (params.type === 'vertraagd' || params.type === 'geannuleerd') && (
+          <div style={{ marginBottom: '1.75rem' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
+              Wat was de oorzaak van de {params.type === 'vertraagd' ? 'vertraging' : 'annulering'}?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {([
+                { val: 'unknown' as CauseType, label: 'Weet ik niet / Airline noemde geen reden', sub: 'Je kunt toch een claim indienen — wij onderzoeken dit' },
+                { val: 'technical' as CauseType, label: 'Technisch defect of staking airlinepersoneel', sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU Wallentin-Hermann)' },
+                { val: 'force' as CauseType, label: 'Extreme weersomstandigheden of ATC-staking', sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld' },
+              ]).map(opt => (
+                <button key={opt.val} type="button" onClick={() => handleCauseType(opt.val)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                    gap: '0.15rem', padding: '0.875rem 1.125rem', borderRadius: '10px', cursor: 'pointer',
+                    border: `2px solid ${causeType === opt.val ? (opt.val === 'force' ? 'var(--orange)' : 'var(--blue)') : 'var(--border)'}`,
+                    background: causeType === opt.val ? (opt.val === 'force' ? 'rgba(249,115,22,0.07)' : 'var(--blue-light)') : '#fff',
+                    transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: causeType === opt.val ? (opt.val === 'force' ? 'var(--orange)' : 'var(--blue)') : 'var(--text)' }}>
+                    {opt.label}
+                  </span>
+                  <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+            {causeType === 'force' && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '8px' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--orange)', margin: 0, lineHeight: 1.5 }}>
+                  <strong>Mogelijk geen compensatierecht</strong> bij buitengewone omstandigheden (art. 5(3)). Ga toch door als je twijfelt — wij checken of de omstandigheid echt als force majeure kwalificeert.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STAP 4: Vluchten / Invoer ────────────────────────────────────── */}
+
+        {/* Geannuleerd: toon directe vluchtnummer-invoer (route-search werkt niet voor geannuleerde vluchten) */}
+        {params && params.type === 'geannuleerd' && params.date && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
+              Vluchtnummer
+            </p>
+            <div style={{
+              background: 'rgba(255,107,43,0.05)', border: '1px solid rgba(255,107,43,0.2)',
+              borderRadius: '10px', padding: '0.875rem 1.125rem', marginBottom: '0.875rem',
             }}>
-              Wanneer vloog je?
-            </label>
-            <input
-              type="date"
-              value={params?.date ?? ''}
-              onChange={e => handleDateChange(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              min={new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-              className="input-field"
-              style={{ colorScheme: 'light', maxWidth: '220px' }}
-            />
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.55 }}>
+                Geannuleerde vluchten zijn niet opgenomen in vluchtdatabases — de vlucht heeft immers nooit plaatsgevonden. Voer het vluchtnummer in van je <strong>boekingsbevestiging of instapkaart</strong>.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text" value={manualFlight}
+                onChange={e => setManualFlight(e.target.value.toUpperCase())}
+                placeholder="bijv. KL1021" maxLength={8} autoFocus
+                style={{
+                  flex: 1, border: '1.5px solid var(--border)', borderRadius: '8px',
+                  padding: '0.625rem 0.875rem', fontSize: '0.9375rem',
+                  fontFamily: 'var(--font-sora)', fontWeight: 700, color: 'var(--text)', outline: 'none',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                onKeyDown={e => e.key === 'Enter' && selectManual()}
+              />
+              <button type="button" onClick={selectManual} disabled={!manualFlight.trim()}
+                className="btn-cta"
+                style={{
+                  padding: '0 1.5rem', fontSize: '0.875rem',
+                  opacity: manualFlight.trim() ? 1 : 0.45,
+                  cursor: manualFlight.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Doorgaan →
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ── STAP 3: Vluchten ─────────────────────────────────────────────── */}
-
-        {/* Prompt: wacht op datum */}
-        {stopover !== null && !dateReady && (
-          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '10px', padding: '2rem', textAlign: 'center' }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ margin: '0 auto 0.875rem', display: 'block' }}>
-              <rect x="4" y="8" width="28" height="24" rx="3" stroke="var(--text-muted)" strokeWidth="1.5" />
-              <path d="M10 4v8M26 4v8M4 17h28" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-sub)' }}>Selecteer de vluchtdatum om vluchten te zoeken.</p>
-          </div>
-        )}
-
-        {/* Directe vluchten */}
-        {showFlightSection && stopover === 'no' && (
+        {/* Directe vluchten — alleen voor vertraagd en geweigerd */}
+        {showFlightSection && stopover === 'no' && params?.type !== 'geannuleerd' && (
           <div style={{ marginBottom: '1.5rem' }}>
             {loadState === 'loading' && (
               <div style={{ textAlign: 'center', padding: '2.5rem 0' }}>
@@ -642,12 +943,33 @@ export default function SelecteerPage() {
             )}
             {loadState === 'loaded' && flights.length > 0 && (
               <>
-                <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
-                  Kies jouw vlucht
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', margin: 0 }}>
+                    {flights.length > 1 ? `${flights.length} vluchten gevonden` : 'Jouw vlucht'}
+                  </p>
+                  {flights.length > 1 && (
+                    <button type="button" onClick={goToMultiResults} style={{
+                      fontSize: '0.72rem', fontWeight: 700, color: 'var(--blue)',
+                      background: 'var(--blue-light)', border: '1px solid var(--blue-border)',
+                      borderRadius: '6px', padding: '0.2rem 0.625rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '0.3rem',
+                    }}>
+                      Bekijk compensatie
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1 5h8M5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                   {flights.map(f => (
-                    <FlightCard key={f.flightNumber} flight={f} onSelect={() => selectFlight(f, false)} isConnecting={false} />
+                    <FlightCard
+                      key={f.flightNumber}
+                      flight={f}
+                      onSelect={() => selectFlight(f, false)}
+                      isConnecting={false}
+                      compensation={flightCompensations[f.flightNumber] ?? null}
+                    />
                   ))}
                 </div>
               </>
@@ -696,15 +1018,6 @@ export default function SelecteerPage() {
                       <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', margin: 0 }}>
                         Leg {i + 1} — {from} → {to}
                       </p>
-                      {selected && (
-                        <span style={{
-                          fontSize: '0.65rem', fontWeight: 700, color: 'var(--green)',
-                          background: 'var(--green-dim)', borderRadius: '4px', padding: '0.15rem 0.4rem',
-                          border: '1px solid var(--green-border)',
-                        }}>
-                          ✓ {selected.flightNumber}
-                        </span>
-                      )}
                     </div>
 
                     {/* Loading */}
@@ -719,13 +1032,50 @@ export default function SelecteerPage() {
                       </div>
                     )}
 
-                    {/* Flight list */}
-                    {state === 'loaded' && flights.length > 0 && (
+                    {/* Selected state — collapsed card with change button */}
+                    {selected && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.875rem',
+                        background: 'var(--green-dim)', border: '1.5px solid var(--green-border)',
+                        borderRadius: '10px', padding: '0.875rem 1.125rem',
+                      }}>
+                        <AirlineLogo iata={selected.iataPrefix} name={selected.airline} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.9375rem', fontFamily: 'var(--font-sora)', color: 'var(--text)' }}>
+                            {selected.flightNumber}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {selected.departureLocal && selected.arrivalLocal
+                              ? `${selected.departureLocal} → ${selected.arrivalLocal}`
+                              : selected.airline}
+                          </div>
+                        </div>
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
+                          <circle cx="9" cy="9" r="8" fill="var(--green)" />
+                          <path d="M5.5 9l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLegs(prev => { const n = [...prev]; n[i] = null; return n })}
+                          style={{
+                            flexShrink: 0, padding: '0.375rem 0.75rem', borderRadius: '7px',
+                            border: '1.5px solid var(--green-border)', background: '#fff',
+                            fontSize: '0.8rem', fontWeight: 600, color: 'var(--green)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Wijzigen
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Flight list — only when nothing selected yet */}
+                    {!selected && state === 'loaded' && flights.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         {flights.map(f => (
                           <FlightCard
                             key={f.flightNumber} flight={f} isConnecting={true}
-                            isSelected={selected?.flightNumber === f.flightNumber}
+                            isSelected={false}
                             onSelect={() => {
                               setSelectedLegs(prev => { const n = [...prev]; n[i] = f; return n })
                               setManualLegs(prev => { const n = [...prev]; n[i] = ''; return n })
@@ -767,8 +1117,8 @@ export default function SelecteerPage() {
           </div>
         )}
 
-        {/* ── Handmatige invoer ─────────────────────────────────────────────── */}
-        {stopover === 'no' && (
+        {/* ── Handmatige invoer (alleen voor vertraagd/geweigerd) ──────────── */}
+        {stopover === 'no' && params?.type !== 'geannuleerd' && (
           <div style={{ marginBottom: '1rem' }}>
             <button type="button" onClick={() => setShowManual(v => !v)}
               style={{

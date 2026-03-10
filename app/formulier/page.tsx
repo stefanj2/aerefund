@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAirlineConfig } from '@/lib/airlines'
 import { formatAmount } from '@/lib/compensation'
+import { AIRPORTS } from '@/lib/airports'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
 import type { FlightData, CoPassenger } from '@/lib/types'
@@ -15,26 +16,48 @@ type ClaimSession = {
   token?: string
 }
 
-const STEPS = ['Gegevens', 'Medereizgers', 'Indienen']
+const STEPS = [
+  { label: 'Jouw gegevens', short: 'Gegevens' },
+  { label: 'Medereizgers',  short: 'Medereizigers' },
+  { label: 'Indienen',      short: 'Indienen' },
+]
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return <p style={{ fontSize: '0.72rem', color: 'var(--red)', marginTop: '0.3rem' }}>{msg}</p>
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <label style={{
+      display: 'block', fontSize: '0.72rem', fontWeight: 700,
+      letterSpacing: '0.04em', textTransform: 'uppercase',
+      color: 'var(--text-muted)', marginBottom: '0.375rem',
+    }}>
+      {children}
+    </label>
+  )
+}
 
 export default function FormulierPage() {
   const router = useRouter()
   const [session, setSession] = useState<ClaimSession | null>(null)
   const [step, setStep] = useState(1)
 
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [iban, setIban] = useState('')
-  const [address, setAddress] = useState('')
-  const [postalCode, setPostalCode] = useState('')
-  const [city, setCity] = useState('')
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [firstName, setFirstName]     = useState('')
+  const [lastName, setLastName]       = useState('')
+  const [email, setEmail]             = useState('')
+  const [phone, setPhone]             = useState('')
+  const [iban, setIban]               = useState('')
+  const [address, setAddress]         = useState('')
+  const [postalCode, setPostalCode]   = useState('')
+  const [city, setCity]               = useState('')
+  const [agreedToTerms, setAgreedToTerms]       = useState(false)
+const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
+  const [errors, setErrors]           = useState<Record<string, string>>({})
   const [coPassengers, setCoPassengers] = useState<CoPassenger[]>([])
   const [boardingPassFile, setBoardingPassFile] = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting]   = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -49,18 +72,26 @@ export default function FormulierPage() {
   if (!session) return null
 
   const { flight, compensation, passengers } = session
-  const airline = getAirlineConfig(flight.iataPrefix ?? '')
+  const iataPrefix = flight.iataPrefix ?? ''
+  const airline    = getAirlineConfig(iataPrefix)
   const totalAmount = compensation.amountPerPerson * passengers
 
   function validateStep1() {
     const errs: Record<string, string> = {}
     if (!firstName.trim()) errs.firstName = 'Voornaam is verplicht'
-    if (!lastName.trim()) errs.lastName = 'Achternaam is verplicht'
+    if (!lastName.trim())  errs.lastName  = 'Achternaam is verplicht'
     if (!email.trim() || !email.includes('@')) errs.email = 'Geldig emailadres verplicht'
-    if (!address.trim()) errs.address = 'Adres is verplicht'
+    if (!phone.trim())     errs.phone     = 'Telefoonnummer is verplicht'
+    if (!address.trim())   errs.address   = 'Adres is verplicht'
     if (!postalCode.trim()) errs.postalCode = 'Postcode is verplicht'
-    if (!city.trim()) errs.city = 'Woonplaats is verplicht'
-    if (!agreedToTerms) errs.terms = 'Je moet akkoord gaan met de voorwaarden'
+    if (!city.trim())      errs.city      = 'Woonplaats is verplicht'
+    return errs
+  }
+
+  function validateStep3() {
+    const errs: Record<string, string> = {}
+    if (!agreedToTerms)      errs.terms      = 'Verplicht'
+if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
     return errs
   }
 
@@ -78,42 +109,50 @@ export default function FormulierPage() {
   }
 
   async function handleSubmit() {
+    const errs = validateStep3()
+    if (Object.keys(errs).length > 0) { setErrors(errs); return }
     setSubmitting(true)
     setSubmitError(null)
+
+    // Upload boarding pass to Supabase Storage (non-blocking on failure)
+    let boardingPassPath: string | null = null
+    if (boardingPassFile && session?.token) {
+      try {
+        const fd = new FormData()
+        fd.append('file', boardingPassFile)
+        fd.append('token', session.token)
+        const uploadRes = await fetch('/api/upload-boarding-pass', { method: 'POST', body: fd })
+        if (uploadRes.ok) {
+          const uploadJson = await uploadRes.json()
+          boardingPassPath = uploadJson.path ?? null
+        }
+      } catch {
+        // Non-blocking — proceed without upload
+      }
+    }
 
     const submittedAt = new Date().toISOString()
     const payload = {
       token: session?.token ?? null,
-      flight,
-      compensation,
-      passengers,
-      firstName,
-      lastName,
-      customerEmail: email,
-      phone,
-      address,
-      postalCode,
-      city,
-      iban,
+      flight, compensation, passengers,
+      firstName, lastName, customerEmail: email,
+      phone, address, postalCode, city, iban,
       coPassengers,
-      boardingPassFileName: boardingPassFile?.name ?? null,
+      boardingPassFileName: boardingPassPath ?? (boardingPassFile?.name ?? null),
       submittedAt,
     }
-
     try {
-      const res = await fetch('/api/submit-claim', {
+      const res  = await fetch('/api/submit-claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const json = await res.json()
-
       if (!res.ok || !json.success) {
-        setSubmitError('Er is iets misgegaan. Probeer het opnieuw of stuur een email naar info@aerefund.nl.')
+        setSubmitError('Er is iets misgegaan. Probeer het opnieuw of mail naar info@aerefund.nl.')
         setSubmitting(false)
         return
       }
-
       sessionStorage.setItem('vv_submitted', JSON.stringify({ ...payload, agreedToTerms }))
       router.push('/bevestiging')
     } catch {
@@ -122,290 +161,478 @@ export default function FormulierPage() {
     }
   }
 
+  const originName      = flight.origin      ? (AIRPORTS[flight.origin]?.name      ?? flight.origin)      : null
+  const destinationName = flight.destination ? (AIRPORTS[flight.destination]?.name ?? flight.destination) : null
+
   return (
-    <main className="min-h-screen pb-10" style={{ background: 'var(--bg)' }}>
-      {/* FunnelNav — global step 4, inner step shown below */}
+    <main className="min-h-screen pb-16" style={{ background: 'var(--bg)' }}>
       <FunnelNav
         step={4}
         flightInfo={{ number: flight.flightNumber, airline: airline.name, amount: formatAmount(totalAmount) }}
       />
 
-      {/* Inner form progress bar */}
-      <div style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '0.625rem 0' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {STEPS.map((label, i) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flex: 1 }}>
-              <div style={{
-                height: '4px', borderRadius: '2px', flex: 1,
-                background: i + 1 <= step ? 'var(--blue)' : 'var(--border)',
-                transition: 'background 0.3s',
-              }} />
-              <span style={{
-                fontSize: '0.65rem', fontWeight: 700,
-                color: i + 1 === step ? 'var(--blue)' : i + 1 < step ? 'var(--green)' : 'var(--text-muted)',
-                whiteSpace: 'nowrap',
-              }}>
-                {i + 1 < step ? '✓ ' : ''}{label}
-              </span>
+      <div className="funnel-grid" style={{ paddingTop: '1.75rem' }}>
+        <div>
+
+          {/* Flight summary bar */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.875rem',
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '14px',
+            padding: '0.875rem 1.125rem', marginBottom: '1.5rem',
+            boxShadow: 'var(--shadow-card)',
+          }}>
+            {/* Airline logo */}
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+              background: '#fff', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', padding: '5px',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
+                alt={airline.name}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={(e) => {
+                  const el = e.currentTarget
+                  el.style.display = 'none'
+                  const parent = el.parentElement!
+                  parent.style.background = airline.color
+                  parent.style.padding = '0'
+                  parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                }}
+              />
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="funnel-grid" style={{ paddingTop: '2rem' }}>
-      <div>
-        {/* Step 1 */}
-        {step === 1 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl font-bold mb-1" style={{ fontFamily: 'var(--font-sora)' }}>Jouw gegevens</h2>
-            <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              We hebben deze nodig om de claim op jouw naam in te dienen.
-            </p>
-
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Voornaam *', value: firstName, set: setFirstName, placeholder: 'Jan', err: errors.firstName },
-                  { label: 'Achternaam *', value: lastName, set: setLastName, placeholder: 'de Vries', err: errors.lastName },
-                ].map((f) => (
-                  <div key={f.label}>
-                    <label className="input-label">{f.label}</label>
-                    <input className="input-field" type="text" value={f.value}
-                      onChange={(e) => f.set(e.target.value)} placeholder={f.placeholder} />
-                    {f.err && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{f.err}</p>}
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className="input-label">E-mailadres *</label>
-                <input className="input-field" type="email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} placeholder="jan@email.nl" />
-                {errors.email && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{errors.email}</p>}
-              </div>
-
-              <div>
-                <label className="input-label">Telefoonnummer</label>
-                <input className="input-field" type="tel" value={phone}
-                  onChange={(e) => setPhone(e.target.value)} placeholder="+31 6 12345678" />
-              </div>
-
-              <div>
-                <label className="input-label">Adres (straat + huisnummer) *</label>
-                <input className="input-field" type="text" value={address}
-                  onChange={(e) => setAddress(e.target.value)} placeholder="Keizersgracht 1" />
-                {errors.address && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{errors.address}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="input-label">Postcode *</label>
-                  <input className="input-field" type="text" value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value.toUpperCase())} placeholder="1234 AB" />
-                  {errors.postalCode && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{errors.postalCode}</p>}
-                </div>
-                <div>
-                  <label className="input-label">Woonplaats *</label>
-                  <input className="input-field" type="text" value={city}
-                    onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
-                  {errors.city && <p className="text-xs mt-1" style={{ color: 'var(--red)' }}>{errors.city}</p>}
-                </div>
-              </div>
-
-              {/* Terms */}
-              <div
-                className="card cursor-pointer"
-                style={{ padding: '1rem', userSelect: 'none' }}
-                onClick={() => setAgreedToTerms(!agreedToTerms)}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    style={{
-                      width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, marginTop: '1px',
-                      border: `1.5px solid ${agreedToTerms ? 'var(--blue)' : 'var(--border)'}`,
-                      background: agreedToTerms ? 'var(--blue)' : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {agreedToTerms && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-sub)' }}>
-                    Ik ga akkoord met de{' '}
-                    <a
-                      href="/algemene-voorwaarden"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: 'var(--blue)', textDecoration: 'underline' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      algemene voorwaarden
-                    </a>{' '}
-                    en geef Aerefund.nl volmacht om namens mij een claim in te dienen bij{' '}
-                    {airline.name}. Ik begrijp dat ik een factuur van{' '}
-                    <strong style={{ color: 'var(--text)' }}>€42</strong> ontvang na indiening, plus{' '}
-                    <strong style={{ color: 'var(--text)' }}>10% commissie</strong> bij succesvolle uitbetaling.
-                  </p>
-                </div>
-                {errors.terms && <p className="text-xs mt-2" style={{ color: 'var(--red)' }}>{errors.terms}</p>}
-              </div>
-
-              <button onClick={handleNext} className="btn-primary">Volgende stap →</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.15rem', fontFamily: 'var(--font-sora)' }}>
+                {airline.name} · {flight.flightNumber}
+                {flight.date && (
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                    {' '}· {new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                )}
+              </p>
+              {originName && destinationName && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                  {originName} → {destinationName}
+                </p>
+              )}
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', margin: '0 0 0.1rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Compensatie</p>
+              <p style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--green)', fontFamily: 'var(--font-sora)', margin: 0 }}>
+                {formatAmount(totalAmount)}
+              </p>
             </div>
           </div>
-        )}
 
-        {/* Step 2 */}
-        {step === 2 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl font-bold mb-1" style={{ fontFamily: 'var(--font-sora)' }}>Medereizgers</h2>
-            <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              {coPassengers.length === 0
-                ? 'Je reist alleen — geen medereizgers.'
-                : `Vul de gegevens in van je ${coPassengers.length} medepassagier${coPassengers.length > 1 ? 's' : ''}.`}
-            </p>
+          {/* Step indicator */}
+          <div style={{
+            display: 'flex', gap: '0', marginBottom: '1.75rem',
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
+            overflow: 'hidden',
+          }}>
+            {STEPS.map((s, i) => {
+              const num = i + 1
+              const isActive = num === step
+              const isDone   = num < step
+              return (
+                <button
+                  key={s.label}
+                  disabled={num > step}
+                  onClick={() => num < step && setStep(num)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '0.4rem', padding: '0.625rem 0.5rem',
+                    background: isActive ? 'var(--blue-light)' : isDone ? 'var(--green-dim)' : 'transparent',
+                    border: 'none',
+                    borderRight: i < 2 ? '1px solid var(--border)' : 'none',
+                    cursor: isDone ? 'pointer' : 'default',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isDone ? 'var(--green)' : isActive ? 'var(--blue)' : 'var(--border)',
+                    transition: 'background 0.2s',
+                  }}>
+                    {isDone ? (
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : (
+                      <span style={{ fontSize: '0.55rem', fontWeight: 800, color: isActive ? '#fff' : 'var(--text-muted)', fontFamily: 'var(--font-sora)' }}>
+                        {num}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: '0.75rem', fontWeight: isActive ? 700 : 500,
+                    color: isActive ? 'var(--blue)' : isDone ? 'var(--green)' : 'var(--text-muted)',
+                  }}>
+                    {s.short}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-            {coPassengers.length === 0 ? (
-              <div className="card mb-6 text-center py-10" style={{ borderStyle: 'dashed' }}>
-                <p className="text-3xl mb-3">✈️</p>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Geen medereizgers toe te voegen.</p>
+          {/* ── Step 1: Jouw gegevens ─────────────────────────────────── */}
+          {step === 1 && (
+            <div className="animate-fade-in">
+              <h2 style={{
+                fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '1.25rem',
+                color: 'var(--navy)', letterSpacing: '-0.02em', marginBottom: '0.25rem',
+              }}>
+                Jouw gegevens
+              </h2>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                We dienen de claim in op jouw naam — vul je gegevens in zoals op je paspoort.
+              </p>
+
+              <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  Naam &amp; contact
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <Label>Voornaam *</Label>
+                    <input className="input-field" type="text" value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)} placeholder="Jan" />
+                    <FieldError msg={errors.firstName} />
+                  </div>
+                  <div>
+                    <Label>Achternaam *</Label>
+                    <input className="input-field" type="text" value={lastName}
+                      onChange={(e) => setLastName(e.target.value)} placeholder="de Vries" />
+                    <FieldError msg={errors.lastName} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <Label>E-mailadres *</Label>
+                  <input className="input-field" type="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)} placeholder="jan@email.nl" />
+                  <FieldError msg={errors.email} />
+                </div>
+                <div>
+                  <Label>Telefoonnummer *</Label>
+                  <input className="input-field" type="tel" value={phone}
+                    onChange={(e) => setPhone(e.target.value)} placeholder="+31 6 12345678" />
+                  <FieldError msg={errors.phone} />
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col gap-4 mb-6">
-                {coPassengers.map((p, i) => (
-                  <div key={i} className="card">
-                    <p className="text-sm font-semibold mb-3" style={{ fontFamily: 'var(--font-sora)', color: 'var(--blue)' }}>
-                      Medepassagier {i + 1}
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      <div className="grid grid-cols-2 gap-2">
+
+              <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  Adres
+                </p>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <Label>Straat + huisnummer *</Label>
+                  <input className="input-field" type="text" value={address}
+                    onChange={(e) => setAddress(e.target.value)} placeholder="Keizersgracht 1" />
+                  <FieldError msg={errors.address} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <Label>Postcode *</Label>
+                    <input className="input-field" type="text" value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value.toUpperCase())} placeholder="1234 AB" />
+                    <FieldError msg={errors.postalCode} />
+                  </div>
+                  <div>
+                    <Label>Woonplaats *</Label>
+                    <input className="input-field" type="text" value={city}
+                      onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
+                    <FieldError msg={errors.city} />
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={handleNext} className="btn-cta" style={{ marginTop: '0.5rem' }}>
+                Volgende stap
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* ── Step 2: Medereizgers ──────────────────────────────────── */}
+          {step === 2 && (
+            <div className="animate-fade-in">
+              <h2 style={{
+                fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '1.25rem',
+                color: 'var(--navy)', letterSpacing: '-0.02em', marginBottom: '0.25rem',
+              }}>
+                Medereizgers
+              </h2>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                {coPassengers.length === 0
+                  ? 'Je reist alleen — geen medereizgers toe te voegen.'
+                  : `Vul de gegevens in van je ${coPassengers.length} medepassagier${coPassengers.length > 1 ? 's' : ''}.`}
+              </p>
+
+              {coPassengers.length === 0 ? (
+                <div className="card" style={{
+                  padding: '2.5rem 1.5rem', textAlign: 'center', marginBottom: '1.25rem',
+                  borderStyle: 'dashed', borderColor: 'var(--border)',
+                }}>
+                  <div style={{
+                    width: '44px', height: '44px', borderRadius: '12px', margin: '0 auto 1rem',
+                    background: 'var(--section-alt)', border: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="var(--text-muted)" />
+                    </svg>
+                  </div>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 0.25rem', fontFamily: 'var(--font-sora)' }}>
+                    Alleen gereisd
+                  </p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Er zijn geen medereizgers om toe te voegen.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.25rem' }}>
+                  {coPassengers.map((p, i) => (
+                    <div key={i} className="card" style={{ padding: '1.25rem' }}>
+                      <p style={{
+                        fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
+                        textTransform: 'uppercase', color: 'var(--blue)', marginBottom: '1rem',
+                      }}>
+                        Medepassagier {i + 1}
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                         <div>
-                          <label className="input-label">Voornaam</label>
+                          <Label>Voornaam</Label>
                           <input className="input-field" type="text" value={p.firstName}
                             onChange={(e) => updateCoPassenger(i, 'firstName', e.target.value)} placeholder="Voornaam" />
                         </div>
                         <div>
-                          <label className="input-label">Achternaam</label>
+                          <Label>Achternaam</Label>
                           <input className="input-field" type="text" value={p.lastName}
                             onChange={(e) => updateCoPassenger(i, 'lastName', e.target.value)} placeholder="Achternaam" />
                         </div>
                       </div>
                       <div>
-                        <label className="input-label">E-mailadres</label>
+                        <Label>E-mailadres</Label>
                         <input className="input-field" type="email" value={p.email}
                           onChange={(e) => updateCoPassenger(i, 'email', e.target.value)} placeholder="email@voorbeeld.nl" />
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3">
-              <button onClick={handleNext} className="btn-primary">Volgende stap →</button>
-              <button onClick={() => setStep(1)} className="btn-secondary">← Terug</button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 */}
-        {step === 3 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl font-bold mb-1" style={{ fontFamily: 'var(--font-sora)' }}>Indienen</h2>
-            <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-              Een boardingpass versterkt je claim. Optioneel — je kunt dit ook later insturen.
-            </p>
-
-            {/* Upload */}
-            <div
-              className="mb-5 text-center py-10 rounded-xl cursor-pointer"
-              style={{
-                border: `2px dashed ${boardingPassFile ? 'var(--green)' : 'var(--border)'}`,
-                background: boardingPassFile ? 'var(--green-dim)' : 'var(--surface)',
-              }}
-              onClick={() => document.getElementById('fileInput')?.click()}
-            >
-              {boardingPassFile ? (
-                <>
-                  <div className="text-3xl mb-2">✅</div>
-                  <p className="font-medium text-sm" style={{ color: 'var(--green)' }}>{boardingPassFile.name}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Klik om te vervangen</p>
-                </>
-              ) : (
-                <>
-                  <div className="text-3xl mb-3">📎</div>
-                  <p className="font-medium text-sm mb-1">Sleep of klik om te selecteren</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>PDF, JPG, PNG — max 10 MB</p>
-                </>
+                  ))}
+                </div>
               )}
-              <input id="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-                onChange={(e) => setBoardingPassFile(e.target.files?.[0] ?? null)} />
-            </div>
 
-            {/* IBAN */}
-            <div className="mb-5">
-              <label className="input-label">IBAN (voor uitbetaling)</label>
-              <input className="input-field" type="text" value={iban}
-                onChange={(e) => setIban(e.target.value.toUpperCase())} placeholder="NL00 ABCD 0123 4567 89" />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Optioneel — kan ook na uitbetaling worden opgegeven</p>
-            </div>
-
-            {/* Summary */}
-            <div className="card mb-6">
-              <p className="font-semibold text-sm mb-3" style={{ fontFamily: 'var(--font-sora)' }}>Overzicht claim</p>
-              <div className="flex flex-col gap-2 text-sm">
-                {[
-                  ['Vlucht', flight.flightNumber],
-                  ['Airline', airline.name],
-                  ['Datum', new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })],
-                  ['Passagiers', String(passengers)],
-                ].map(([k, v]) => (
-                  <div key={k} className="flex justify-between">
-                    <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                    <span className="font-medium">{v}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between pt-2 mt-1" style={{ borderTop: '1px solid var(--border)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Totale compensatie</span>
-                  <span className="font-bold" style={{ color: 'var(--green)' }}>{formatAmount(totalAmount)}</span>
-                </div>
-                <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span>Onze factuur (na indiening)</span>
-                  <span>€42</span>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                <button onClick={handleNext} className="btn-cta">
+                  Volgende stap
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <button onClick={() => setStep(1)} className="btn-secondary">← Terug</button>
               </div>
             </div>
+          )}
 
-            <div className="flex flex-col gap-3">
+          {/* ── Step 3: Indienen ─────────────────────────────────────── */}
+          {step === 3 && (
+            <div className="animate-fade-in">
+              <h2 style={{
+                fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '1.25rem',
+                color: 'var(--navy)', letterSpacing: '-0.02em', marginBottom: '0.25rem',
+              }}>
+                Controleer en indien
+              </h2>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Upload optioneel je boardingpass — dit versterkt de claim aanzienlijk.
+              </p>
+
+              {/* Boarding pass upload */}
+              <div
+                onClick={() => document.getElementById('fileInput')?.click()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '1rem',
+                  padding: '1.125rem 1.25rem', borderRadius: '14px', cursor: 'pointer',
+                  border: `1.5px dashed ${boardingPassFile ? 'var(--green)' : 'var(--border)'}`,
+                  background: boardingPassFile ? 'var(--green-dim)' : '#fff',
+                  marginBottom: '1rem', transition: 'all 0.2s',
+                }}
+              >
+                <div style={{
+                  width: '42px', height: '42px', borderRadius: '10px', flexShrink: 0,
+                  background: boardingPassFile ? 'var(--green-dim)' : 'var(--section-alt)',
+                  border: `1px solid ${boardingPassFile ? 'var(--green-border)' : 'var(--border)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {boardingPassFile ? (
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                      <path d="M4 10l4 4 8-8" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                      <path d="M10 3v10M6 7l4-4 4 4" stroke="var(--text-muted)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3 15v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1" stroke="var(--text-muted)" strokeWidth="1.7" strokeLinecap="round" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: boardingPassFile ? 'var(--green)' : 'var(--text)', margin: '0 0 0.15rem', fontFamily: 'var(--font-sora)' }}>
+                    {boardingPassFile ? boardingPassFile.name : 'Boardingpass uploaden'}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                    {boardingPassFile ? 'Klik om te vervangen' : 'PDF, JPG of PNG · optioneel · max 10 MB'}
+                  </p>
+                </div>
+                <input id="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                  style={{ display: 'none' }}
+                  onChange={(e) => setBoardingPassFile(e.target.files?.[0] ?? null)} />
+              </div>
+
+              {/* IBAN */}
+              <div className="card" style={{ padding: '1.125rem 1.25rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                  IBAN voor uitbetaling
+                </p>
+                <input className="input-field" type="text" value={iban}
+                  onChange={(e) => setIban(e.target.value.toUpperCase())} placeholder="NL00 ABCD 0123 4567 89" />
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
+                  Optioneel — kan ook later worden opgegeven na uitbetaling
+                </p>
+              </div>
+
+              {/* Claim summary */}
+              <div className="card" style={{ padding: '1.125rem 1.25rem', marginBottom: '1.25rem' }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.875rem' }}>
+                  Overzicht claim
+                </p>
+                {[
+                  ['Naam',        `${firstName} ${lastName}`],
+                  ['Vlucht',      flight.flightNumber],
+                  ['Airline',     airline.name],
+                  ['Datum',       new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })],
+                  ['Passagiers',  String(passengers)],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.375rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{k}</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)' }}>{v}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1.5px dashed var(--border)', marginTop: '0.625rem', paddingTop: '0.625rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Verwachte compensatie</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--green)', fontFamily: 'var(--font-sora)' }}>{formatAmount(totalAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Onze factuur (na indiening)</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>€42</span>
+                </div>
+              </div>
+
+              {/* Checkboxes */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
+                {[
+                  {
+                    key: 'terms',
+                    checked: agreedToTerms,
+                    set: setAgreedToTerms,
+                    err: errors.terms,
+                    text: <>Ik ga akkoord met de{' '}
+                      <a href="/algemene-voorwaarden" target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--blue)', textDecoration: 'underline' }}
+                        onClick={(e) => e.stopPropagation()}>algemene voorwaarden</a>{' '}
+                      en de{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--blue)', textDecoration: 'underline' }}
+                        onClick={(e) => e.stopPropagation()}>privacyverklaring</a>,
+                      en geef Aerefund volmacht om namens mij een claim in te dienen bij {airline.name}.
+                      Na indiening ontvang ik een factuur van 42 euro per e-mail,
+                      en bij succesvolle uitbetaling wordt 10% commissie in rekening gebracht.
+                    </>,
+                  },
+                  {
+                    key: 'withdrawal',
+                    checked: agreedToWithdrawal,
+                    set: setAgreedToWithdrawal,
+                    err: errors.withdrawal,
+                    text: <>Ik doe afstand van mijn herroepingsrecht, omdat Aerefund direct na indiening start met de behandeling van mijn claim.</>,
+                  },
+                ].map(({ key, checked, set, err, text }) => (
+                  <div
+                    key={key}
+                    style={{
+                      background: checked ? 'var(--blue-light)' : '#fff',
+                      border: `1.5px solid ${err ? 'var(--red)' : checked ? 'var(--blue-border)' : 'var(--border)'}`,
+                      borderRadius: '10px', padding: '0.875rem 1rem',
+                      cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
+                    }}
+                    onClick={() => { set(!checked); setErrors((p) => ({ ...p, [key]: '' })) }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <div style={{
+                        width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, marginTop: '1px',
+                        border: `1.5px solid ${checked ? 'var(--blue)' : err ? 'var(--red)' : 'var(--border)'}`,
+                        background: checked ? 'var(--blue)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}>
+                        {checked && (
+                          <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', lineHeight: 1.6, margin: 0 }}>
+                        {text}
+                      </p>
+                    </div>
+                    {err && <p style={{ fontSize: '0.72rem', color: 'var(--red)', margin: '0.375rem 0 0 1.625rem' }}>Verplicht om door te gaan</p>}
+                  </div>
+                ))}
+              </div>
+
               {submitError && (
-                <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '10px', padding: '0.875rem 1rem' }}>
+                <div style={{
+                  background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)',
+                  borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem',
+                }}>
                   <p style={{ fontSize: '0.875rem', color: 'var(--red)', margin: 0, lineHeight: 1.5 }}>{submitError}</p>
                 </div>
               )}
-              <button onClick={handleSubmit} disabled={submitting} className="btn-primary"
-                style={{ fontSize: '1rem', padding: '1rem 2rem' }}>
+
+              <button onClick={handleSubmit} disabled={submitting} className="btn-cta" style={{ marginBottom: '0.875rem', flexDirection: 'column', gap: '0.2rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' }}>
                 {submitting ? (
-                  <span className="flex items-center gap-2 justify-center">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{
                       width: '14px', height: '14px', borderRadius: '50%',
                       border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'white',
-                      animation: 'spin 0.7s linear infinite', display: 'inline-block',
+                      animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0,
                     }} />
                     Claim wordt aangemaakt…
                   </span>
-                ) : 'Claim aanmaken — factuur volgt →'}
+                ) : (
+                  <>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      Claim indienen
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 400, opacity: 0.75, letterSpacing: '0.01em' }}>
+                      Betalingsverplichting
+                    </span>
+                  </>
+                )}
               </button>
               <button onClick={() => setStep(2)} className="btn-secondary">← Terug</button>
             </div>
-          </div>
-        )}
-      </div>{/* end main column */}
-      <FunnelSidebar step={4} />
-      </div>{/* end funnel-grid */}
+          )}
+
+        </div>{/* end main column */}
+        <FunnelSidebar step={4} />
+      </div>
     </main>
   )
 }

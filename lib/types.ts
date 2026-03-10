@@ -1,5 +1,8 @@
 export type FlightType = 'vertraagd' | 'geannuleerd' | 'geweigerd'
 
+export type CancellationNotice = 'lt14days' | 'gt14days'
+export type CauseType = 'force' | 'technical' | 'unknown'
+
 export type RouteSearchParams = {
   origin: string       // IATA, e.g. "AMS"
   destination: string  // IATA, e.g. "BKK"
@@ -7,6 +10,9 @@ export type RouteSearchParams = {
   type: FlightType
   via?: string         // legacy single stopover (kept for backwards compat)
   viaAirports?: string[] // multiple stopovers (new)
+  // Extra eligibility refiners (set on /selecteer)
+  cancellationNotice?: CancellationNotice  // geannuleerd only
+  causeType?: CauseType                    // vertraagd + geannuleerd
 }
 
 export type RouteFlightOption = {

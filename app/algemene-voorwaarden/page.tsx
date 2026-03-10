@@ -17,7 +17,7 @@ export default function AlgemeneVoorwaardenPage() {
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem 1.25rem 5rem' }}>
 
         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-          Versie 1.0 — 1 maart 2025
+          Versie 1.1 — 10 maart 2026
         </p>
         <h1 style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: 'clamp(1.75rem, 4vw, 2.25rem)', color: 'var(--navy)', marginBottom: '0.5rem', lineHeight: 1.2 }}>
           Algemene Voorwaarden
@@ -105,9 +105,13 @@ export default function AlgemeneVoorwaardenPage() {
             <li>Mee te werken aan het claimproces, waaronder het tijdig aanleveren van gevraagde documenten (zoals boardingpass of boekingsbevestiging);</li>
             <li>Aerefund.nl onmiddellijk te informeren indien de opdrachtgever zelf of via een derde een regeling treft met de luchtvaartmaatschappij;</li>
             <li>Niet gelijktijdig een identieke claim in te dienen via een andere partij of rechtstreeks bij de luchtvaartmaatschappij gedurende de looptijd van de overeenkomst.</li>
+            <li>Gevraagde aanvullende informatie of documenten te verstrekken binnen de door Aerefund.nl gestelde termijn (minimaal 14 dagen), indien dit noodzakelijk is voor de behandeling van de claim.</li>
           </ol>
           <p>
             Bij het verstrekken van onjuiste of onvolledige informatie is de opdrachtgever aansprakelijk voor de schade die Aerefund.nl daardoor lijdt.
+          </p>
+          <p>
+            Indien de opdrachtgever nalaat tijdig te reageren op een verzoek om aanvullende informatie of documenten die noodzakelijk zijn voor de behandeling van de claim, en dit leidt tot extra werkzaamheden aan de zijde van Aerefund.nl, is Aerefund.nl gerechtigd de daadwerkelijk gemaakte juridische en administratieve kosten te verhalen op de opdrachtgever. Deze kosten bedragen <strong>€120 per uur (exclusief BTW)</strong>. Aerefund.nl zal de opdrachtgever voorafgaand aan het in rekening brengen van deze kosten schriftelijk informeren en een laatste redelijke termijn stellen om de benodigde informatie alsnog aan te leveren.
           </p>
         </LegalSection>
 

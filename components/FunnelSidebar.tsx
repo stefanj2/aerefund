@@ -193,9 +193,80 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
   const airlineName = airline?.name ?? 'de airline'
   const successRate = airline?.successRate ?? 87
   const avgWeeks = airline?.avgPaymentWeeks ?? 8
+  const difficulty = airline?.claimDifficulty ?? 'medium'
+
+  const difficultyLabel = difficulty === 'easy' ? 'Makkelijk' : difficulty === 'medium' ? 'Gemiddeld' : 'Moeilijk'
+  const difficultyColor = difficulty === 'easy' ? 'var(--green)' : difficulty === 'medium' ? 'var(--blue)' : 'var(--orange)'
+  const difficultyBg = difficulty === 'easy' ? 'var(--green-dim)' : difficulty === 'medium' ? 'var(--blue-light)' : 'rgba(255,107,43,0.1)'
+  const difficultyBorder = difficulty === 'easy' ? 'var(--green-border)' : difficulty === 'medium' ? 'var(--blue-border)' : 'rgba(255,107,43,0.25)'
+  const difficultyNote = difficulty === 'hard'
+    ? `${airlineName} staat bekend om het uitstellen van uitbetaling. Een formele claimbrief via Aerefund verhoogt je kans aanzienlijk.`
+    : difficulty === 'easy'
+    ? `${airlineName} betaalt doorgaans snel en zonder gedoe zodra een formele claim wordt ingediend.`
+    : `${airlineName} reageert normaal gesproken binnen de wettelijke termijn als de claim correct is ingediend.`
 
   return (
     <>
+      {/* Airline success stat */}
+      <SideSection>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+          <SideLabel>Claim bij {airlineName}</SideLabel>
+          <span style={{
+            fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '5px',
+            background: difficultyBg, border: `1px solid ${difficultyBorder}`, color: difficultyColor,
+          }}>
+            {difficultyLabel}
+          </span>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', marginBottom: '0.875rem' }}>
+          <div style={{ background: 'var(--section-alt)', borderRadius: '10px', padding: '0.75rem' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--blue)', fontFamily: 'var(--font-sora)', margin: 0, lineHeight: 1 }}>
+              {successRate}%
+            </p>
+            <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', lineHeight: 1.35 }}>
+              slagingskans
+            </p>
+          </div>
+          <div style={{ background: 'var(--section-alt)', borderRadius: '10px', padding: '0.75rem' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--navy)', fontFamily: 'var(--font-sora)', margin: 0, lineHeight: 1 }}>
+              {avgWeeks}w
+            </p>
+            <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', lineHeight: 1.35 }}>
+              gem. betaaltermijn
+            </p>
+          </div>
+        </div>
+
+        <p style={{ fontSize: '0.775rem', color: 'var(--text-sub)', lineHeight: 1.6, margin: 0 }}>
+          {difficultyNote}
+        </p>
+      </SideSection>
+
+      {/* What happens after submission — timeline */}
+      <SideSection>
+        <SideLabel>Wat gebeurt er na indiening?</SideLabel>
+        {[
+          { dot: 'var(--blue)', label: 'Binnen 24 uur', text: 'Claimbrief verstuurd naar ' + airlineName },
+          { dot: 'var(--blue)', label: `Week 1–${Math.round(avgWeeks / 2)}`, text: airlineName + ' reageert op onze aanvraag' },
+          { dot: 'var(--green)', label: `Week ${Math.round(avgWeeks / 2)}–${avgWeeks}`, text: 'Compensatie overgemaakt naar jouw rekening' },
+        ].map((item, i) => (
+          <div key={i} style={{ display: 'flex', gap: '0.75rem', marginBottom: i < 2 ? '0.5rem' : 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: item.dot, flexShrink: 0, marginTop: '3px' }} />
+              {i < 2 && <div style={{ width: '1.5px', flex: 1, background: 'var(--border)', minHeight: '18px', margin: '3px 0' }} />}
+            </div>
+            <div style={{ paddingBottom: i < 2 ? '0.375rem' : 0 }}>
+              <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 0.1rem' }}>
+                {item.label}
+              </p>
+              <p style={{ fontSize: '0.775rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+            </div>
+          </div>
+        ))}
+      </SideSection>
+
       {/* Customer review */}
       {review && (
         <SideSection>
@@ -205,7 +276,7 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
               background: 'var(--blue)', borderRadius: '2px',
             }} />
             <div>
-              <p style={{ fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--text-sub)', fontStyle: 'italic', marginBottom: '0.5rem' }}>
+              <p style={{ fontSize: '0.85rem', lineHeight: 1.65, color: 'var(--text-sub)', fontStyle: 'italic', marginBottom: '0.5rem' }}>
                 &ldquo;{review.quote}&rdquo;
               </p>
               <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -216,7 +287,7 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
         </SideSection>
       )}
 
-      {/* No win no fee callout */}
+      {/* No win no fee + FAQ */}
       <SideSection>
         <div style={{
           background: 'var(--green-dim)', border: '1px solid var(--green-border)',
@@ -239,7 +310,7 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
           },
           {
             q: 'Wat kost het precies?',
-            a: `€42 factuur na indiening. Twijfel je nog? Dan kun je het resultaat ook gratis per email ontvangen en later beslissen.`,
+            a: `€42 factuur na indiening + 10% commissie bij succesvolle uitbetaling. De check is altijd gratis.`,
           },
           {
             q: 'Hoe lang duurt het?',
@@ -252,14 +323,21 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
         ]} />
       </SideSection>
 
-      {/* Authority */}
-      <SideSection>
-        <SideLabel>Onze aanpak</SideLabel>
-        <CheckRow>Juridisch onderbouwde claimbrief op naam van jouw advocatenkantoor</CheckRow>
-        <CheckRow>Automatisch bezwaar bij afwijzing door {airlineName}</CheckRow>
-        <CheckRow>Directe uitbetaling op jouw rekening — wij incasseren apart</CheckRow>
-        <CheckRow>Updates per email gedurende het hele proces</CheckRow>
-      </SideSection>
+      {/* Urgency: statute of limitations */}
+      <div style={{
+        background: 'rgba(255,107,43,0.06)', border: '1px solid rgba(255,107,43,0.2)',
+        borderRadius: '12px', padding: '0.875rem 1rem', marginBottom: '0.875rem',
+        display: 'flex', gap: '0.625rem', alignItems: 'flex-start',
+      }}>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: '1px' }}>
+          <circle cx="8" cy="8" r="6.5" stroke="var(--orange)" strokeWidth="1.4" />
+          <path d="M8 5v3.5l2 1.5" stroke="var(--orange)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-sub)', lineHeight: 1.6, margin: 0 }}>
+          <strong style={{ color: 'var(--text)' }}>Let op verjaringstermijn.</strong>{' '}
+          EC 261-claims verjaren doorgaans na 2–3 jaar. Hoe eerder je indient, hoe groter de kans op uitbetaling.
+        </p>
+      </div>
 
       <TrustBadges />
     </>

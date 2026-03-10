@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAirlineConfig } from '@/lib/airlines'
-import { formatAmount } from '@/lib/compensation'
+import { formatAmount, isIntraEuRoute } from '@/lib/compensation'
 import PassengerSelector from '@/components/PassengerSelector'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
+import { AIRPORTS } from '@/lib/airports'
 import type { FlightData } from '@/lib/types'
 
 type ResultData = {
@@ -14,18 +15,24 @@ type ResultData = {
   compensation: { eligible: boolean; amountPerPerson: number; reason: string }
 }
 
+type MultiResultItem = {
+  flight: FlightData
+  compensation: { eligible: boolean; amountPerPerson: number; reason: string; distanceKm: number | null }
+}
+
 function useCountUp(target: number, duration = 900) {
   const [count, setCount] = useState(0)
-  const startedRef = useRef(false)
+  const prevRef = useRef(0)
   useEffect(() => {
-    if (startedRef.current || target === 0) return
-    startedRef.current = true
+    if (target === 0) return
+    const from = prevRef.current
+    prevRef.current = target
     const start = Date.now()
     const frame = () => {
       const elapsed = Date.now() - start
       const progress = Math.min(elapsed / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
-      setCount(Math.round(eased * target))
+      setCount(Math.round(from + eased * (target - from)))
       if (progress < 1) requestAnimationFrame(frame)
     }
     requestAnimationFrame(frame)
@@ -46,12 +53,19 @@ const KLANTVERHALEN: Record<string, { name: string; quote: string }> = {
 export default function UitkomstPage() {
   const router = useRouter()
   const [data, setData] = useState<ResultData | null>(null)
+  const [multiResults, setMultiResults] = useState<MultiResultItem[] | null>(null)
   const [passengers, setPassengers] = useState(1)
   const [token, setToken] = useState<string | null>(null)
+  const [claimingIdx, setClaimingIdx] = useState<number | null>(null)
 
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_result')
-    if (!raw) { router.replace('/'); return }
+    if (!raw) {
+      const rawMulti = sessionStorage.getItem('vv_multi_results')
+      if (rawMulti) { setMultiResults(JSON.parse(rawMulti)); return }
+      router.replace('/')
+      return
+    }
     const parsed: ResultData = JSON.parse(raw)
     setData(parsed)
 
@@ -83,6 +97,152 @@ export default function UitkomstPage() {
   const totalAmount = (data?.compensation.amountPerPerson ?? 0) * passengers
   const animatedTotal = useCountUp(totalAmount, 750)
 
+  async function handleMultiClaim(item: MultiResultItem, idx: number) {
+    setClaimingIdx(idx)
+    try {
+      const res = await fetch('/api/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flightData: item.flight, compensation: item.compensation, passengers: 1 }),
+      })
+      const json = await res.json()
+      const t = json.token ?? null
+      if (t) sessionStorage.setItem('vv_token', t)
+      sessionStorage.setItem('vv_claim', JSON.stringify({ flight: item.flight, compensation: item.compensation, passengers: 1, token: t }))
+      sessionStorage.removeItem('vv_multi_results')
+      router.push('/formulier')
+    } catch {
+      setClaimingIdx(null)
+    }
+  }
+
+  // Multi-results view (bypasses /laden flow)
+  if (multiResults) {
+    const eligibleCount = multiResults.filter(r => r.compensation.eligible).length
+    return (
+      <main className="min-h-screen" style={{ background: 'var(--bg)' }}>
+        <FunnelNav step={3} />
+        <div className="container" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+
+            {/* Header */}
+            <div className="animate-fade-up d1" style={{ marginBottom: '1.5rem' }}>
+              <h1 style={{
+                fontFamily: 'var(--font-sora)', fontWeight: 800,
+                fontSize: 'clamp(1.25rem, 4vw, 1.625rem)',
+                color: 'var(--navy)', letterSpacing: '-0.02em', margin: '0 0 0.5rem',
+              }}>
+                {eligibleCount > 0
+                  ? `${eligibleCount} van ${multiResults.length} vluchten komen in aanmerking`
+                  : 'Compensatiecheck klaar'}
+              </h1>
+              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
+                Herken jouw vlucht en klik op <strong>Claim indienen</strong> om verder te gaan.
+              </p>
+            </div>
+
+            {/* Flight result cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              {multiResults.map((item, idx) => {
+                const prefix = item.flight.iataPrefix ?? ''
+                const al = getAirlineConfig(prefix)
+                const eligible = item.compensation.eligible
+                const isClaiming = claimingIdx === idx
+
+                return (
+                  <div key={item.flight.flightNumber} className="animate-fade-up" style={{
+                    background: '#fff', border: `1.5px solid ${eligible ? 'var(--green-border)' : 'var(--border)'}`,
+                    borderRadius: '14px', overflow: 'hidden',
+                    boxShadow: eligible ? '0 2px 16px rgba(34,197,94,0.10)' : 'var(--shadow-sm)',
+                    animationDelay: `${idx * 80}ms`,
+                  }}>
+                    {/* Status strip */}
+                    <div style={{
+                      padding: '0.5rem 1rem',
+                      background: eligible ? 'var(--green-dim)' : 'rgba(0,0,0,0.03)',
+                      borderBottom: `1px solid ${eligible ? 'var(--green-border)' : 'var(--border)'}`,
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    }}>
+                      <span style={{
+                        fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                        color: eligible ? 'var(--green)' : 'var(--text-muted)',
+                      }}>
+                        {eligible ? `€${item.compensation.amountPerPerson} per persoon · EC 261/2004` : 'Geen compensatierecht vastgesteld'}
+                      </span>
+                    </div>
+
+                    {/* Card body */}
+                    <div style={{ padding: '1rem 1.125rem', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                      {/* Airline logo */}
+                      <div style={{
+                        width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+                        background: '#fff', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden', padding: '5px',
+                      }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://www.gstatic.com/flights/airline_logos/70px/${prefix || 'UN'}.png`}
+                          alt={al.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          onError={(e) => {
+                            const el = e.currentTarget; el.style.display = 'none'
+                            const p = el.parentElement!; p.style.background = al.color; p.style.padding = '0'
+                            p.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${prefix || al.name.slice(0,2).toUpperCase()}</span>`
+                          }}
+                        />
+                      </div>
+
+                      {/* Flight info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '0.9375rem', color: 'var(--navy)', margin: '0 0 0.2rem' }}>
+                          {item.flight.flightNumber}
+                          <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                            {al.name}
+                          </span>
+                        </p>
+                        {item.flight.origin && item.flight.destination && (
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.15rem' }}>
+                            {AIRPORTS[item.flight.origin]?.name ?? item.flight.origin} → {AIRPORTS[item.flight.destination]?.name ?? item.flight.destination}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-sub)', margin: 0 }}>
+                          {item.compensation.reason}
+                        </p>
+                      </div>
+
+                      {/* CTA */}
+                      {eligible && (
+                        <button
+                          onClick={() => handleMultiClaim(item, idx)}
+                          disabled={claimingIdx !== null}
+                          style={{
+                            flexShrink: 0, padding: '0.5rem 0.875rem',
+                            background: isClaiming ? 'var(--green-dim)' : 'var(--green)',
+                            color: isClaiming ? 'var(--green)' : '#fff',
+                            border: 'none', borderRadius: '8px', cursor: claimingIdx !== null ? 'default' : 'pointer',
+                            fontSize: '0.78rem', fontWeight: 700, fontFamily: 'var(--font-sora)',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {isClaiming ? 'Bezig…' : 'Claim →'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <button onClick={() => router.replace('/selecteer')} className="btn-secondary animate-fade-up d4" style={{ marginTop: '1.5rem' }}>
+              ← Andere route controleren
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   if (!data) return null
 
   const { flight, compensation } = data
@@ -107,57 +267,143 @@ export default function UitkomstPage() {
   }
 
   // ── Niet in aanmerking ─────────────────────────────────────────────────────
+  const overrideAmount = (() => {
+    const km = flight.distanceKm
+    if (!km) return 400
+    if (km < 1500) return 250
+    if (km <= 3500) return 400
+    // > 3500 km: intra-EU cap at €400
+    if (flight.origin && flight.destination && isIntraEuRoute(flight.origin, flight.destination)) return 400
+    return 600
+  })()
+
+  function handleOverride() {
+    const override = {
+      ...data,
+      compensation: {
+        ...compensation, eligible: true,
+        amountPerPerson: overrideAmount,
+        reason: 'Compensatie op basis van eigen opgave passagier',
+      },
+    }
+    sessionStorage.setItem('vv_result', JSON.stringify(override))
+    window.location.reload()
+  }
+
   if (!compensation.eligible) {
     return (
       <main className="min-h-screen" style={{ background: 'var(--bg)' }}>
         <FunnelNav step={3} />
-        <div className="container" style={{ paddingTop: '5rem', paddingBottom: '2.5rem' }}>
-          <div style={{ maxWidth: '380px', margin: '0 auto', textAlign: 'center' }}>
-            <div style={{
-              width: '64px', height: '64px', borderRadius: '50%',
-              background: 'var(--section-alt)', border: '1.5px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
-            }}>
-              <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-                <circle cx="13" cy="13" r="11" stroke="var(--text-muted)" strokeWidth="1.8" />
-                <path d="M13 8v6" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="13" cy="18" r="1.2" fill="var(--text-muted)" />
+        <div className="container" style={{ paddingTop: '3.5rem', paddingBottom: '3rem' }}>
+          <div style={{ maxWidth: '420px', margin: '0 auto' }}>
+
+            {/* Flight identity block */}
+            <div className="card animate-fade-up d1" style={{ marginBottom: '1.25rem', padding: '1.125rem 1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {/* Airline logo */}
+                <div style={{
+                  width: '52px', height: '52px', borderRadius: '12px', flexShrink: 0,
+                  background: '#fff', border: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden', padding: '6px',
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
+                    alt={airline.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    onError={(e) => {
+                      const el = e.currentTarget
+                      el.style.display = 'none'
+                      const parent = el.parentElement!
+                      parent.style.background = airline.color
+                      parent.style.padding = '0'
+                      parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.75rem;color:#fff;letter-spacing:0.04em">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.25rem', fontFamily: 'var(--font-sora)' }}>
+                    {airline.name} — vlucht {flight.flightNumber}
+                  </p>
+                  {flight.date && (
+                    <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: '0 0 0.2rem' }}>
+                      {new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  )}
+                  {flight.origin && flight.destination && (
+                    <p style={{ fontSize: '0.775rem', color: 'var(--text-sub)', margin: 0 }}>
+                      {AIRPORTS[flight.origin]?.name ?? flight.origin}
+                      {' '}
+                      <span style={{ color: 'var(--text-muted)' }}>→</span>
+                      {' '}
+                      {AIRPORTS[flight.destination]?.name ?? flight.destination}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Heading + reason */}
+            <div className="animate-fade-up d1" style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+              <h1 style={{
+                fontFamily: 'var(--font-sora)', fontWeight: 800,
+                fontSize: '1.375rem', lineHeight: 1.25,
+                color: 'var(--navy)', letterSpacing: '-0.02em', marginBottom: '0.625rem',
+              }}>
+                Waarschijnlijk geen recht op compensatie
+              </h1>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
+                {compensation.reason}
+              </p>
+            </div>
+
+            {/* Card: why try anyway */}
+            <div className="card animate-fade-up d2" style={{ marginBottom: '1rem', padding: '1.125rem 1.25rem' }}>
+              <p style={{
+                fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem',
+              }}>
+                Toch een kans?
+              </p>
+              {[
+                'Aankomstvertraging telt — niet vertrek. Dit verschilt soms flink.',
+                'Vluchtnummers kunnen gewijzigd zijn door codeshare-afspraken',
+                'Airlines registreren vluchtdata niet altijd correct',
+              ].map((text, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start', marginBottom: i < 2 ? '0.5rem' : 0 }}>
+                  <div style={{
+                    width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0, marginTop: '1px',
+                    background: 'var(--blue-light)', border: '1px solid var(--blue-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2 2 4-4" stroke="var(--blue)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-sub)', lineHeight: 1.55 }}>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button onClick={handleOverride} className="btn-cta animate-fade-up d3" style={{ marginBottom: '0.625rem' }}>
+              Toch doorgaan — claim €{overrideAmount}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </div>
-            <h2 className="text-2xl font-bold mb-3" style={{ fontFamily: 'var(--font-sora)' }}>
-              Geen recht op compensatie
-            </h2>
-            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-sub)' }}>
-              Op basis van de beschikbare vluchtdata kom je{' '}
-              <strong style={{ color: 'var(--text)' }}>waarschijnlijk niet in aanmerking</strong>{' '}
-              voor compensatie onder EC 261/2004.
+            </button>
+
+            <p className="animate-fade-up d3" style={{
+              fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1rem',
+            }}>
+              Handmatige beoordeling · geen resultaat = geen extra kosten
             </p>
-            <div className="card text-left mb-8" style={{ padding: '1rem 1.25rem' }}>
-              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Reden</p>
-              <p className="text-sm" style={{ color: 'var(--text-sub)' }}>{compensation.reason}</p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <button onClick={() => router.replace('/')} className="btn-primary">← Controleer een andere vlucht</button>
-              <button
-                onClick={() => {
-                  const override = {
-                    ...data,
-                    compensation: {
-                      ...compensation, eligible: true,
-                      amountPerPerson: flight.distanceKm
-                        ? flight.distanceKm < 1500 ? 250 : flight.distanceKm <= 3500 ? 400 : 600
-                        : 400,
-                      reason: 'Compensatie op basis van eigen opgave passagier',
-                    },
-                  }
-                  sessionStorage.setItem('vv_result', JSON.stringify(override))
-                  window.location.reload()
-                }}
-                className="btn-secondary"
-              >
-                Ik ben het hier niet mee eens — toch doorgaan
-              </button>
-            </div>
+
+            <button onClick={() => router.replace('/')} className="btn-secondary animate-fade-up d4">
+              ← Andere vlucht controleren
+            </button>
+
           </div>
         </div>
       </main>
@@ -175,83 +421,169 @@ export default function UitkomstPage() {
       <div className="funnel-grid">
       <div>
 
-        {/* Hero text */}
-        <div className="text-center mb-6 animate-fade-up d1">
-          <p style={{
-            fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: 'var(--blue)', marginBottom: '0.75rem',
-          }}>
-            Compensatierecht bevestigd
-          </p>
-          <h1 style={{
-            fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: 'clamp(1.75rem, 5vw, 2.25rem)',
-            lineHeight: 1.15, color: 'var(--navy)', letterSpacing: '-0.025em', marginBottom: '0.625rem',
-          }}>
-            <span style={{ color: 'var(--blue)' }}>{airline.name}</span> is jou{' '}
-            <span style={{ color: 'var(--green)' }}>{formatAmount(compensation.amountPerPerson)}</span>{' '}
-            verschuldigd
-          </h1>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
-            {flight.flightNumber} · EC 261/2004 — {compensation.reason}
-          </p>
-        </div>
-
-        {/* Amount card */}
-        <div className="card mb-4 animate-receipt d2">
-          <p style={{
-            fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: 'var(--text-muted)', marginBottom: '0.875rem',
-          }}>
-            Jouw compensatie
-          </p>
-          <div style={{ textAlign: 'center', paddingBottom: '0.25rem' }}>
-            <p style={{
-              fontFamily: 'var(--font-sora)', fontWeight: 900, lineHeight: 1,
-              fontSize: 'clamp(3rem, 12vw, 4rem)',
-              color: 'var(--navy)',
-              fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.03em',
-            }} className="animate-count d3">
-              €{animatedTotal.toLocaleString('nl-NL')}
-            </p>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-              {passengers > 1
-                ? `${passengers} × ${formatAmount(compensation.amountPerPerson)}`
-                : formatAmount(compensation.amountPerPerson) + ' per persoon'}
-            </p>
+        {/* ① Flight identity */}
+        <div className="card animate-fade-up d1" style={{ padding: '0.875rem 1.125rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+              background: '#fff', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', padding: '5px',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
+                alt={airline.name}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={(e) => {
+                  const el = e.currentTarget; el.style.display = 'none'
+                  const p = el.parentElement!; p.style.background = airline.color; p.style.padding = '0'
+                  p.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.15rem', fontFamily: 'var(--font-sora)' }}>
+                {airline.name} · {flight.flightNumber}
+                {flight.date && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{' '}· {new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
+              </p>
+              {flight.origin && flight.destination && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                  {AIRPORTS[flight.origin]?.name ?? flight.origin} → {AIRPORTS[flight.destination]?.name ?? flight.destination}
+                </p>
+              )}
+            </div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0,
+              background: 'var(--green-dim)', border: '1px solid var(--green-border)',
+              borderRadius: '6px', padding: '0.25rem 0.625rem',
+            }}>
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="var(--green)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--green)' }}>In aanmerking</span>
+            </div>
           </div>
-          <hr style={{ border: 'none', borderTop: '1.5px dashed var(--border)', margin: '1.125rem 0' }} />
-          <PassengerSelector value={passengers} onChange={setPassengers} amountPerPerson={compensation.amountPerPerson} />
         </div>
 
-        {/* Primary CTA */}
-        <button onClick={handleClaim} className="btn-cta mb-3 animate-fade-up d3">
+        {/* ② Result — heading + amount + passengers in één kaart */}
+        <div className="animate-receipt d2" style={{
+          marginBottom: '1rem', borderRadius: '16px', overflow: 'hidden',
+          border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', background: '#fff',
+        }}>
+          {/* Green header strip — geen margin-trucs, overflow:hidden knipt de hoeken */}
+          <div style={{
+            padding: '0.875rem 1.25rem',
+            background: 'var(--green-dim)',
+            borderBottom: '1px solid var(--green-border)',
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" fill="var(--green)" />
+              <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--green)' }}>
+              {flight.type === 'geannuleerd' ? 'Annulering bevestigd' : flight.type === 'geweigerd' ? 'Instapweigering' : 'Compensatierecht bevestigd'} · EC 261/2004
+            </span>
+          </div>
+
+          {/* Card body */}
+          <div style={{ padding: '1.25rem' }}>
+            {/* Headline + amount side by side */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
+              <div>
+                <h1 style={{
+                  fontFamily: 'var(--font-sora)', fontWeight: 800,
+                  fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+                  lineHeight: 1.2, color: 'var(--navy)', letterSpacing: '-0.02em', margin: '0 0 0.375rem',
+                }}>
+                  {flight.type === 'geannuleerd'
+                    ? <>{airline.name} annuleerde<br />jouw vlucht</>
+                    : flight.type === 'geweigerd'
+                    ? <>{airline.name} weigerde<br />jou de instap</>
+                    : <>{airline.name} is jou<br />compensatie verschuldigd</>
+                  }
+                </h1>
+                <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  {compensation.reason}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <p style={{
+                  fontFamily: 'var(--font-sora)', fontWeight: 900, lineHeight: 1,
+                  fontSize: 'clamp(2rem, 8vw, 2.75rem)',
+                  color: 'var(--green)', letterSpacing: '-0.03em',
+                  fontVariantNumeric: 'tabular-nums', margin: 0,
+                }} className="animate-count d2">
+                  €{animatedTotal.toLocaleString('nl-NL')}
+                </p>
+                {passengers > 1 && (
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {passengers} × {formatAmount(compensation.amountPerPerson)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '1.5px dashed var(--border)', margin: '1rem 0' }} />
+            <PassengerSelector value={passengers} onChange={setPassengers} amountPerPerson={compensation.amountPerPerson} />
+
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              marginTop: '1rem', padding: '0.625rem 0.875rem',
+              background: 'rgba(255,107,43,0.06)', border: '1px solid rgba(255,107,43,0.18)',
+              borderRadius: '8px',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                <circle cx="8" cy="8" r="6.5" stroke="var(--orange)" strokeWidth="1.4" />
+                <path d="M8 5v3.5l2 1.5" stroke="var(--orange)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p style={{ fontSize: '0.775rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.4 }}>
+                <strong style={{ color: 'var(--text)' }}>{airline.name} betaalt gemiddeld binnen {airline.avgPaymentWeeks} weken</strong>{' '}na indiening van de claim.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ③ CTA */}
+        <button onClick={handleClaim} className="btn-cta animate-fade-up d3" style={{ marginBottom: '0.625rem' }}>
           Claim mijn {formatAmount(totalAmount)}
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
 
-        {/* Resume token */}
-        {token && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            padding: '0.6rem 0.875rem', borderRadius: '10px',
-            background: 'var(--section-alt)', border: '1px solid var(--border)',
-            marginBottom: '0.5rem',
-          }}>
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
-              <rect x="1.5" y="5.5" width="11" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M4.5 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Claimcode om later verder te gaan:&nbsp;
-              <strong style={{ fontFamily: 'var(--font-sora)', color: 'var(--text)', letterSpacing: '0.08em' }}>
-                {token}
-              </strong>
-            </span>
+        {/* ④ Trust + token */}
+        <div className="animate-fade-up d4" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {/* Social proof */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem' }}>
+            {[
+              { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1l1.5 3 3.5.5-2.5 2.5.6 3.5L6 9l-3.1 1.5.6-3.5L1 4.5l3.5-.5L6 1z" fill="var(--blue)" /></svg>, label: '4.8/5 beoordeling' },
+              { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--green)" strokeWidth="1.3"/><path d="M3.5 6l2 2 3-3" stroke="var(--green)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, label: '1.400+ claims' },
+              { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--blue)" strokeWidth="1.3"/><path d="M6 3.5v2.5l1.5 1" stroke="var(--blue)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, label: 'Gratis · 2 min' },
+            ].map((item) => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                {item.icon}{item.label}
+              </div>
+            ))}
           </div>
-        )}
+
+          {/* Token */}
+          {token && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.55rem 0.875rem', borderRadius: '10px',
+              background: 'var(--section-alt)', border: '1px solid var(--border)',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
+                <rect x="1.5" y="5.5" width="11" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M4.5 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Claimcode:&nbsp;<strong style={{ fontFamily: 'var(--font-sora)', color: 'var(--text)', letterSpacing: '0.08em' }}>{token}</strong>
+              </span>
+            </div>
+          )}
+        </div>
+
       </div>{/* end main column */}
 
       <FunnelSidebar step={3} airline={{
