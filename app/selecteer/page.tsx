@@ -645,8 +645,8 @@ export default function SelecteerPage() {
           </div>
         )}
 
-        {/* ── STAP 2: Tussenstop vraag — niet relevant bij annulering ─────── */}
-        {params && params.type !== 'geannuleerd' && (
+        {/* ── STAP 2: Tussenstop vraag ─────────────────────────────────────── */}
+        {params && (
           <div style={{ marginBottom: '1.75rem' }}>
             <p style={{
               fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em',
@@ -886,50 +886,8 @@ export default function SelecteerPage() {
 
         {/* ── STAP 4: Vluchten / Invoer ────────────────────────────────────── */}
 
-        {/* Geannuleerd: toon directe vluchtnummer-invoer (route-search werkt niet voor geannuleerde vluchten) */}
-        {params && params.type === 'geannuleerd' && params.date && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
-              Vluchtnummer
-            </p>
-            <div style={{
-              background: 'rgba(255,107,43,0.05)', border: '1px solid rgba(255,107,43,0.2)',
-              borderRadius: '10px', padding: '0.875rem 1.125rem', marginBottom: '0.875rem',
-            }}>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.55 }}>
-                Geannuleerde vluchten zijn niet opgenomen in vluchtdatabases — de vlucht heeft immers nooit plaatsgevonden. Voer het vluchtnummer in van je <strong>boekingsbevestiging of instapkaart</strong>.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text" value={manualFlight}
-                onChange={e => setManualFlight(e.target.value.toUpperCase())}
-                placeholder="bijv. KL1021" maxLength={8} autoFocus
-                style={{
-                  flex: 1, border: '1.5px solid var(--border)', borderRadius: '8px',
-                  padding: '0.625rem 0.875rem', fontSize: '0.9375rem',
-                  fontFamily: 'var(--font-sora)', fontWeight: 700, color: 'var(--text)', outline: 'none',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                onKeyDown={e => e.key === 'Enter' && selectManual()}
-              />
-              <button type="button" onClick={selectManual} disabled={!manualFlight.trim()}
-                className="btn-cta"
-                style={{
-                  padding: '0 1.5rem', fontSize: '0.875rem',
-                  opacity: manualFlight.trim() ? 1 : 0.45,
-                  cursor: manualFlight.trim() ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Doorgaan →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Directe vluchten — alleen voor vertraagd en geweigerd */}
-        {showFlightSection && stopover === 'no' && params?.type !== 'geannuleerd' && (
+        {/* Directe vluchten */}
+        {showFlightSection && stopover === 'no' && (
           <div style={{ marginBottom: '1.5rem' }}>
             {loadState === 'loading' && (
               <div style={{ textAlign: 'center', padding: '2.5rem 0' }}>
@@ -976,8 +934,16 @@ export default function SelecteerPage() {
             )}
             {loadState === 'loaded' && flights.length === 0 && (
               <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>Geen directe vluchten gevonden op deze route en datum.</p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Gebruik de handmatige invoer hieronder.</p>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
+                  {params?.type === 'geannuleerd'
+                    ? 'Geannuleerde vlucht niet gevonden in de database.'
+                    : 'Geen directe vluchten gevonden op deze route en datum.'}
+                </p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {params?.type === 'geannuleerd'
+                    ? 'Dat kan kloppen — gebruik je vluchtnummer van de boekingsbevestiging hieronder.'
+                    : 'Gebruik de handmatige invoer hieronder.'}
+                </p>
               </div>
             )}
             {loadState === 'error' && (
@@ -1117,8 +1083,8 @@ export default function SelecteerPage() {
           </div>
         )}
 
-        {/* ── Handmatige invoer (alleen voor vertraagd/geweigerd) ──────────── */}
-        {stopover === 'no' && params?.type !== 'geannuleerd' && (
+        {/* ── Handmatige invoer ────────────────────────────────────────────── */}
+        {stopover === 'no' && (
           <div style={{ marginBottom: '1rem' }}>
             <button type="button" onClick={() => setShowManual(v => !v)}
               style={{
