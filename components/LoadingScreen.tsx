@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { lookupFlight } from '@/lib/flight-api'
 import { calculateCompensation } from '@/lib/compensation'
+import { isEuCarrier } from '@/lib/airlines'
 import FunnelNav from '@/components/FunnelNav'
 import type { FlightData } from '@/lib/types'
 
@@ -45,6 +46,13 @@ const STEPS_GEWEIGERD = [
   { label: 'Compensatiebedrag berekenen…', duration: 700 },
 ]
 
+const STEPS_DOWNGRADE = [
+  { label: 'Vluchtgegevens ophalen…', duration: 1200 },
+  { label: 'Klasse verlagen bevestigen…', duration: 800 },
+  { label: 'EC 261/2004 art. 10 toetsen…', duration: 900 },
+  { label: 'Vergoedingspercentage berekenen…', duration: 700 },
+]
+
 type ScreenState = 'loading' | 'done' | 'not_found' | 'error'
 
 export default function LoadingScreen() {
@@ -78,6 +86,7 @@ export default function LoadingScreen() {
     const STEPS =
       parsed.type === 'geannuleerd' ? STEPS_GEANNULEERD :
       parsed.type === 'geweigerd'   ? STEPS_GEWEIGERD   :
+      parsed.type === 'downgrade'   ? STEPS_DOWNGRADE   :
       STEPS_VERTRAAGD
 
     // Resolve which flight data to use, applying EC 261 first-carrier principle for multi-leg
@@ -144,13 +153,16 @@ export default function LoadingScreen() {
           if (!flightData.found) {
             // Geannuleerde en geweigerde vluchten zijn altijd eligible ongeacht API-data —
             // proceed automatisch naar uitkomst zonder de "niet gevonden" foutmelding te tonen.
-            if (parsed.type === 'geannuleerd' || parsed.type === 'geweigerd') {
+            if (parsed.type === 'geannuleerd' || parsed.type === 'geweigerd' || parsed.type === 'downgrade') {
               const distKm = parsed.claimDistanceKm ?? flightData.distanceKm
+              const prefix = flightData.iataPrefix ?? ''
               const comp = calculateCompensation(distKm, null, parsed.type, false, {
                 origin:             flightData.origin      ?? routeParams.origin,
                 destination:        flightData.destination ?? routeParams.destination,
+                carrierIsEu:        isEuCarrier(prefix),
                 cancellationNotice: routeParams.cancellationNotice,
                 causeType:          routeParams.causeType,
+                ticketPriceEur:     routeParams.ticketPriceEur,
               })
               sessionStorage.setItem('vv_result', JSON.stringify({ flight: { ...flightData, distanceKm: distKm }, compensation: comp }))
               setState('done')
@@ -170,16 +182,19 @@ export default function LoadingScreen() {
           // Gebruik scheduledArrival + actualArrival indien beschikbaar.
           const effectiveDelay = computeArrivalDelay(flightData)
 
+          const carrierPrefix = flightData.iataPrefix ?? ''
           const compensation = calculateCompensation(
             effectiveDistanceKm,
             effectiveDelay,
             parsed.type,
             flightData.found,
             {
-              origin:               flightData.origin      ?? routeParams.origin,
-              destination:          flightData.destination ?? routeParams.destination,
-              cancellationNotice:   routeParams.cancellationNotice,
-              causeType:            routeParams.causeType,
+              origin:             flightData.origin      ?? routeParams.origin,
+              destination:        flightData.destination ?? routeParams.destination,
+              carrierIsEu:        isEuCarrier(carrierPrefix),
+              cancellationNotice: routeParams.cancellationNotice,
+              causeType:          routeParams.causeType,
+              ticketPriceEur:     routeParams.ticketPriceEur,
             }
           )
           sessionStorage.setItem(
@@ -301,6 +316,7 @@ export default function LoadingScreen() {
   const STEPS =
     search?.type === 'geannuleerd' ? STEPS_GEANNULEERD :
     search?.type === 'geweigerd'   ? STEPS_GEWEIGERD   :
+    search?.type === 'downgrade'   ? STEPS_DOWNGRADE   :
     STEPS_VERTRAAGD
 
   return (

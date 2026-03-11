@@ -12,7 +12,7 @@ import type { FlightData } from '@/lib/types'
 
 type ResultData = {
   flight: FlightData
-  compensation: { eligible: boolean; amountPerPerson: number; reason: string }
+  compensation: { eligible: boolean; amountPerPerson: number; reason: string; downgradePercentage?: number }
 }
 
 type MultiResultItem = {
@@ -57,6 +57,8 @@ export default function UitkomstPage() {
   const [passengers, setPassengers] = useState(1)
   const [token, setToken] = useState<string | null>(null)
   const [claimingIdx, setClaimingIdx] = useState<number | null>(null)
+  // Downgrade: live ticketprice input on uitkomst
+  const [downgradeTicketPrice, setDowngradeTicketPrice] = useState('')
 
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_result')
@@ -94,7 +96,16 @@ export default function UitkomstPage() {
     }
   }, [router])
 
-  const totalAmount = (data?.compensation.amountPerPerson ?? 0) * passengers
+  // For downgrade: recalculate amount from live ticket price input if provided
+  const downgradeAmount = (() => {
+    if (!data?.compensation.downgradePercentage) return null
+    const pct = data.compensation.downgradePercentage
+    const price = parseFloat(downgradeTicketPrice.replace(',', '.'))
+    if (!isNaN(price) && price > 0) return Math.round(price * pct / 100)
+    return data.compensation.amountPerPerson // 0 if no ticket price was provided
+  })()
+  const effectiveAmountPerPerson = downgradeAmount !== null ? downgradeAmount : (data?.compensation.amountPerPerson ?? 0)
+  const totalAmount = effectiveAmountPerPerson * passengers
   const animatedTotal = useCountUp(totalAmount, 750)
 
   async function handleMultiClaim(item: MultiResultItem, idx: number) {
@@ -481,7 +492,7 @@ export default function UitkomstPage() {
               <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--green)' }}>
-              {flight.type === 'geannuleerd' ? 'Annulering bevestigd' : flight.type === 'geweigerd' ? 'Instapweigering' : 'Compensatierecht bevestigd'} · EC 261/2004
+              {flight.type === 'geannuleerd' ? 'Annulering bevestigd' : flight.type === 'geweigerd' ? 'Instapweigering' : flight.type === 'downgrade' ? 'Klasseverlaging bevestigd' : 'Compensatierecht bevestigd'} · EC 261/2004
             </span>
           </div>
 
@@ -499,6 +510,8 @@ export default function UitkomstPage() {
                     ? <>{airline.name} annuleerde<br />jouw vlucht</>
                     : flight.type === 'geweigerd'
                     ? <>{airline.name} weigerde<br />jou de instap</>
+                    : flight.type === 'downgrade'
+                    ? <>{airline.name} verlaagde<br />jouw reisklasse</>
                     : <>{airline.name} is jou<br />compensatie verschuldigd</>
                   }
                 </h1>
@@ -524,7 +537,37 @@ export default function UitkomstPage() {
             </div>
 
             <hr style={{ border: 'none', borderTop: '1.5px dashed var(--border)', margin: '1rem 0' }} />
-            <PassengerSelector value={passengers} onChange={setPassengers} amountPerPerson={compensation.amountPerPerson} />
+
+            {/* Downgrade: ticketprice input to calculate amount */}
+            {compensation.downgradePercentage && (
+              <div style={{ marginBottom: '1rem', padding: '0.875rem 1rem', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '10px' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: '0.5rem' }}>
+                  Vergoeding: {compensation.downgradePercentage}% van ticketprijs (art. 10)
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)' }}>€</span>
+                    <input
+                      type="number" min="0" step="1" value={downgradeTicketPrice}
+                      onChange={e => setDowngradeTicketPrice(e.target.value)}
+                      placeholder="ticketprijs"
+                      style={{
+                        width: '140px', border: '1.5px solid rgba(139,92,246,0.35)', borderRadius: '8px',
+                        padding: '0.5rem 0.75rem 0.5rem 1.625rem', fontSize: '0.875rem',
+                        fontFamily: 'var(--font-sora)', fontWeight: 700, color: 'var(--text)', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>
+                    {downgradeTicketPrice && !isNaN(parseFloat(downgradeTicketPrice))
+                      ? `→ €${Math.round(parseFloat(downgradeTicketPrice) * compensation.downgradePercentage / 100)} vergoeding`
+                      : 'voer ticketprijs in voor exact bedrag'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <PassengerSelector value={passengers} onChange={setPassengers} amountPerPerson={effectiveAmountPerPerson} />
 
             <div style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -543,7 +586,39 @@ export default function UitkomstPage() {
           </div>
         </div>
 
-        {/* ③ CTA */}
+        {/* ③ Extra rechten info */}
+        {/* 5-uursrecht: recht op terugbetaling bij vertraging ≥ 5 uur of annulering */}
+        {(flight.type === 'geannuleerd' || (flight.type === 'vertraagd' && (flight.delayMinutes ?? 0) >= 300)) && (
+          <div className="animate-fade-up d3" style={{
+            marginBottom: '0.875rem', padding: '0.875rem 1.125rem',
+            background: 'var(--blue-light)', border: '1px solid var(--blue-border)', borderRadius: '12px',
+          }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: '0.4rem' }}>
+              5-uursrecht (art. 8)
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.55 }}>
+              Bij {flight.type === 'geannuleerd' ? 'een annulering' : 'vertraging ≥ 5 uur'} heb je ook recht op <strong>volledige terugbetaling van je ticket</strong> als je de reis niet meer wilt voortzetten — los van de compensatie. Dit geldt zelfs bij force majeure.
+            </p>
+          </div>
+        )}
+
+        {/* Zorgplicht: maaltijden en hotel altijd claimbaar */}
+        <div className="animate-fade-up d3" style={{
+          marginBottom: '0.875rem', padding: '0.875rem 1.125rem',
+          background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: '12px',
+        }}>
+          <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: '0.4rem' }}>
+            Zorgplicht (art. 9) — bewaar bonnetjes
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.55 }}>
+            {flight.type === 'geannuleerd' || flight.type === 'geweigerd'
+              ? <>De airline is ook verplicht maaltijden, hotel en transport te vergoeden. <strong>Houd bonnetjes bij</strong> — dit is cumulatief met de compensatie.</>
+              : <>Bij wachttijd ≥ 2 uur heb je recht op maaltijden en 2 telefoongesprekken. Bij overnight-vertraging ook hotel + transport. <strong>Houd bonnetjes bij.</strong></>
+            }
+          </p>
+        </div>
+
+        {/* ④ CTA */}
         <button onClick={handleClaim} className="btn-cta animate-fade-up d3" style={{ marginBottom: '0.625rem' }}>
           Claim mijn {formatAmount(totalAmount)}
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -551,7 +626,7 @@ export default function UitkomstPage() {
           </svg>
         </button>
 
-        {/* ④ Trust + token */}
+        {/* ⑤ Trust + token */}
         <div className="animate-fade-up d4" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {/* Social proof */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem' }}>

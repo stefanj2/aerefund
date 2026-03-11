@@ -1,7 +1,37 @@
-export type FlightType = 'vertraagd' | 'geannuleerd' | 'geweigerd'
+export type FlightType = 'vertraagd' | 'geannuleerd' | 'geweigerd' | 'downgrade'
 
-export type CancellationNotice = 'lt14days' | 'gt14days'
-export type CauseType = 'force' | 'technical' | 'unknown'
+// Annuleringsmelding — art. 5(1)(c) matrix
+// gt14days  : ≥14 dagen → nooit compensatie
+// d7_13_ok  : 7-13 dagen, adequaat alternatief aangeboden → geen compensatie
+// d7_13_bad : 7-13 dagen, geen/slecht alternatief → wél compensatie
+// lt7_ok    : <7 dagen, adequaat alternatief → geen compensatie
+// lt7_bad   : <7 dagen, geen/slecht alternatief → wél compensatie
+// no_notice : dag zelf of geen melding → altijd compensatie
+// lt14days  : legacy — behandeld als lt7_bad (meest gunstig voor passagier)
+export type CancellationNotice =
+  | 'gt14days'
+  | 'd7_13_ok'
+  | 'd7_13_bad'
+  | 'lt7_ok'
+  | 'lt7_bad'
+  | 'no_notice'
+  | 'lt14days'   // legacy backwards-compat
+
+// Oorzaak van vertraging/annulering
+// weather       : slecht weer → force majeure (art. 5(3))
+// atc-strike    : ATC-staking → force majeure
+// airline-strike: staking airlinepersoneel → NIET force majeure (CJEU C-195/17)
+// ripple        : late inbound aircraft / rotatievertraging → NIET force majeure (CJEU)
+// technical     : technisch defect → NIET force majeure (CJEU C-549/07)
+// unknown       : onbekend → claim loopt door
+export type CauseType =
+  | 'weather'
+  | 'atc-strike'
+  | 'airline-strike'
+  | 'ripple'
+  | 'technical'
+  | 'unknown'
+  | 'force'      // legacy backwards-compat → behandeld als weather
 
 export type RouteSearchParams = {
   origin: string       // IATA, e.g. "AMS"
@@ -11,8 +41,10 @@ export type RouteSearchParams = {
   via?: string         // legacy single stopover (kept for backwards compat)
   viaAirports?: string[] // multiple stopovers (new)
   // Extra eligibility refiners (set on /selecteer)
-  cancellationNotice?: CancellationNotice  // geannuleerd only
-  causeType?: CauseType                    // vertraagd + geannuleerd
+  cancellationNotice?: CancellationNotice
+  causeType?: CauseType
+  singleBooking?: 'single' | 'separate'  // connecting flights: one booking or separate tickets?
+  ticketPriceEur?: number                // downgrade claims: paid ticket price in EUR
 }
 
 export type RouteFlightOption = {

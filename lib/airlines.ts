@@ -113,3 +113,108 @@ export function getAirlinePrefixFromFlightNumber(flightNumber: string): string {
   if (numMatch) return numMatch[1]
   return ''
 }
+
+// ── EU/EEA carrier detectie ──────────────────────────────────────────────────
+// EC 261/2004 art. 3(1)(b): bij vertrek buiten EU naar EU geldt de verordening
+// ALLEEN als de uitvoerende maatschappij EU/EEA-geregistreerd is.
+// UK261 is identiek van toepassing op Britse maatschappijen.
+
+const EU_EEA_GB_AIRLINE_PREFIXES = new Set([
+  // Nederland
+  'KL', 'HV', 'CD', 'TB', 'WA',
+  // VK (GB — UK261 = identiek)
+  'BA', 'U2', 'VS', 'BY', 'MT', 'TOM', 'ZB', 'LS',
+  // Duitsland
+  'LH', 'EW', '4U', 'DE', 'X3',
+  // Frankrijk
+  'AF', 'TO', 'SS', 'SE',
+  // Spanje
+  'IB', 'VY', 'UX', 'V7', 'YW',
+  // Italië
+  'AZ', 'XZ', 'FC',
+  // Ierland
+  'FR', 'EI',
+  // Portugal
+  'TP', 'NI',
+  // België
+  'SN',
+  // Oostenrijk
+  'OS',
+  // Griekenland
+  'A3', 'OA',
+  // Hongarije
+  'W6',
+  // Polen
+  'LO',
+  // Tsjechië
+  'OK',
+  // Roemenië
+  'RO',
+  // Kroatië
+  'OU',
+  // Zweden
+  'SK',
+  // Finland
+  'AY',
+  // Denemarken (SAS)
+  // Noorwegen (EEA)
+  'DY', 'D8', 'IBK',
+  // IJsland (EEA)
+  'FI',
+  // Bulgarije
+  'FB',
+  // Litouwen
+  'TE',
+  // Letland
+  'BT',
+  // Estland
+  'OV',
+  // Malta
+  'KM',
+  // Cyprus
+  'CY',
+  // Slowakije
+  'OM',
+  // Slovenië
+  'JP',
+])
+
+const NON_EU_AIRLINE_PREFIXES = new Set([
+  // Golf
+  'EK', 'FZ', 'QR', 'EY', 'WY', 'GF', 'SV',
+  // Turkije (NIET EU/EEA)
+  'TK', 'PC', 'XQ', '8Q',
+  // Azië
+  'SQ', 'CX', 'MH', 'TG', 'GA', 'PR', 'MI',
+  // India
+  'AI', '6E', 'IX', 'SG',
+  // Japan/Korea
+  'NH', 'JL', 'OZ', 'KE',
+  // China
+  'CA', 'MU', 'CZ', 'HU',
+  // VS
+  'AA', 'DL', 'UA', 'WN', 'B6', 'AS', 'F9', 'G4',
+  // Canada
+  'AC', 'WS', 'PD',
+  // Afrika / Midden-Oosten
+  'ET', 'KQ', 'MS', 'AT', 'RB', 'KL' /* catch */ ,
+  // Oceanië
+  'QF', 'NZ', 'JQ', 'VA',
+  // Zwitserland (niet in EU/EEA voor EC 261)
+  'LX',
+  // Oekraïne / wit-Rusland / Rusland
+  'PS', 'B2', 'SU', 'DP',
+])
+
+/**
+ * Geeft terug of de maatschappij EU/EEA-geregistreerd is.
+ * Returns true  → EU/EEA (altijd gebonden aan EC 261)
+ * Returns false → niet-EU (buiten EU-vertrek: niet gebonden)
+ * Returns undefined → onbekend (geef voordeel van de twijfel in berekening)
+ */
+export function isEuCarrier(iataPrefix: string): boolean | undefined {
+  const p = iataPrefix.toUpperCase()
+  if (EU_EEA_GB_AIRLINE_PREFIXES.has(p)) return true
+  if (NON_EU_AIRLINE_PREFIXES.has(p)) return false
+  return undefined
+}

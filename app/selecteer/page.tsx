@@ -184,6 +184,20 @@ export default function SelecteerPage() {
   const [cancellationNotice, setCancellationNotice] = useState<CancellationNotice | null>(null)
   const [causeType, setCauseType] = useState<CauseType | null>(null)
 
+  // Annulering: 2-staps notice matrix
+  // noticeWindow = eerste vraag (wanneer gemeld?), alternativeAdequate = tweede vraag
+  const [noticeWindow, setNoticeWindow] = useState<'gt14days' | 'd7_13' | 'lt7' | 'no_notice' | null>(null)
+  const [alternativeAdequate, setAlternativeAdequate] = useState<boolean | null>(null)
+
+  // Connecting flight: één boeking of aparte tickets?
+  const [singleBooking, setSingleBooking] = useState<'single' | 'separate' | null>(null)
+
+  // Downgrade: ticketprijs (nodig voor art. 10 berekening)
+  const [ticketPrice, setTicketPrice] = useState('')
+
+  // Multi-leg validatie error
+  const [legValidationError, setLegValidationError] = useState<string | null>(null)
+
   function updateRouteParam<K extends keyof RouteSearchParams>(key: K, value: RouteSearchParams[K]) {
     setParams(prev => {
       if (!prev) return prev
@@ -201,6 +215,40 @@ export default function SelecteerPage() {
   function handleCauseType(val: CauseType) {
     setCauseType(val)
     updateRouteParam('causeType', val)
+  }
+
+  // Compute + store cancellationNotice from 2-step notice matrix
+  function handleNoticeWindow(window: 'gt14days' | 'd7_13' | 'lt7' | 'no_notice') {
+    setNoticeWindow(window)
+    setAlternativeAdequate(null)
+    if (window === 'gt14days') {
+      handleCancellationNotice('gt14days')
+    } else if (window === 'no_notice') {
+      handleCancellationNotice('no_notice')
+    }
+    // d7_13 / lt7: wait for alternativeAdequate answer
+  }
+
+  function handleAlternativeAdequate(adequate: boolean) {
+    setAlternativeAdequate(adequate)
+    if (noticeWindow === 'd7_13') {
+      handleCancellationNotice(adequate ? 'd7_13_ok' : 'd7_13_bad')
+    } else if (noticeWindow === 'lt7') {
+      handleCancellationNotice(adequate ? 'lt7_ok' : 'lt7_bad')
+    }
+  }
+
+  function handleSingleBooking(val: 'single' | 'separate') {
+    setSingleBooking(val)
+    updateRouteParam('singleBooking', val)
+  }
+
+  function handleTicketPrice(val: string) {
+    setTicketPrice(val)
+    const num = parseFloat(val.replace(',', '.'))
+    if (!isNaN(num) && num > 0) {
+      updateRouteParam('ticketPriceEur', num)
+    }
   }
 
   function handleTypeChange(newType: FlightType) {
@@ -222,7 +270,12 @@ export default function SelecteerPage() {
     // Reset eligibility refiners
     setCancellationNotice(null)
     setCauseType(null)
-    const updated: RouteSearchParams = { ...params, type: newType, cancellationNotice: undefined, causeType: undefined }
+    setNoticeWindow(null)
+    setAlternativeAdequate(null)
+    setSingleBooking(null)
+    setTicketPrice('')
+    setLegValidationError(null)
+    const updated: RouteSearchParams = { ...params, type: newType, cancellationNotice: undefined, causeType: undefined, singleBooking: undefined, ticketPriceEur: undefined }
     setParams(updated)
     sessionStorage.setItem('vv_route_search', JSON.stringify(updated))
   }
@@ -446,6 +499,7 @@ export default function SelecteerPage() {
     const numLegs = viaAirports.length + 1
     const flightNumbers: string[] = []
     const prefetchedFlights: object[] = []
+    setLegValidationError(null)
 
     for (let i = 0; i < numLegs; i++) {
       const sel = selectedLegs[i]
@@ -462,6 +516,11 @@ export default function SelecteerPage() {
             delayMinutes: sel.delayMinutes, distanceKm: null, found: true,
           })
         }
+      } else {
+        // Leg has no selection and no manual entry — validation error
+        const allAirports = [params.origin, ...viaAirports, params.destination]
+        setLegValidationError(`Selecteer of voer het vluchtnummer in voor leg ${i + 1}: ${allAirports[i]} → ${allAirports[i + 1]}`)
+        return
       }
     }
 
@@ -535,11 +594,11 @@ export default function SelecteerPage() {
               {params.type && (
                 <span style={{
                   fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px',
-                  background: params.type === 'geannuleerd' ? 'var(--red-dim)' : params.type === 'geweigerd' ? 'var(--orange-dim)' : 'var(--blue-light)',
-                  color: params.type === 'geannuleerd' ? 'var(--red)' : params.type === 'geweigerd' ? 'var(--orange)' : 'var(--blue)',
-                  border: `1px solid ${params.type === 'geannuleerd' ? 'rgba(220,38,38,0.2)' : params.type === 'geweigerd' ? 'rgba(249,115,22,0.2)' : 'var(--blue-border)'}`,
+                  background: params.type === 'geannuleerd' ? 'var(--red-dim)' : params.type === 'geweigerd' ? 'var(--orange-dim)' : params.type === 'downgrade' ? 'rgba(139,92,246,0.1)' : 'var(--blue-light)',
+                  color: params.type === 'geannuleerd' ? 'var(--red)' : params.type === 'geweigerd' ? 'var(--orange)' : params.type === 'downgrade' ? '#7c3aed' : 'var(--blue)',
+                  border: `1px solid ${params.type === 'geannuleerd' ? 'rgba(220,38,38,0.2)' : params.type === 'geweigerd' ? 'rgba(249,115,22,0.2)' : params.type === 'downgrade' ? 'rgba(139,92,246,0.25)' : 'var(--blue-border)'}`,
                 }}>
-                  {{ vertraagd: 'Vertraging', geannuleerd: 'Annulering', geweigerd: 'Instapweigering' }[params.type]}
+                  {{ vertraagd: 'Vertraging', geannuleerd: 'Annulering', geweigerd: 'Instapweigering', downgrade: 'Klasseverlaging' }[params.type]}
                 </span>
               )}
             </div>
@@ -586,6 +645,18 @@ export default function SelecteerPage() {
                   ),
                   label: 'Instapweigering',
                   sub: 'Je werd geweigerd door overboeking of een andere reden',
+                },
+                {
+                  val: 'downgrade' as FlightType,
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <rect x="2" y="4" width="14" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+                      <rect x="2" y="10" width="14" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2.5 1.5" />
+                      <path d="M9 8.5v2M7.5 10l1.5 1.5L10.5 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ),
+                  label: 'Klasseverlaging (downgrade)',
+                  sub: 'Je vloog in een lagere klasse dan je geboekt en betaald had',
                 },
               ]).map(opt => {
                 const isActive = params.type === opt.val
@@ -804,12 +875,79 @@ export default function SelecteerPage() {
                 </p>
               </div>
             )}
+
+            {/* Enkele boeking vs. aparte tickets — alleen relevant bij tussenstop */}
+            {stopover === 'yes' && viaAirports.length > 0 && (
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.625rem' }}>
+                  Was dit één boeking of aparte tickets?
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {[
+                    { val: 'single' as const, label: 'Eén boeking', sub: 'Alle vluchten op één reserveringsnummer', ok: true },
+                    { val: 'separate' as const, label: 'Aparte tickets', sub: 'Losse boekingen voor elke vlucht', ok: false },
+                  ].map(opt => (
+                    <button key={opt.val} type="button" onClick={() => handleSingleBooking(opt.val)}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', gap: '0.15rem',
+                        padding: '0.75rem 1rem', borderRadius: '10px', cursor: 'pointer',
+                        border: `2px solid ${singleBooking === opt.val ? (opt.ok ? 'var(--green)' : 'var(--orange)') : 'var(--border)'}`,
+                        background: singleBooking === opt.val ? (opt.ok ? 'var(--green-dim)' : 'rgba(249,115,22,0.07)') : '#fff',
+                        transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: '0.8rem', color: singleBooking === opt.val ? (opt.ok ? 'var(--green)' : 'var(--orange)') : 'var(--text)' }}>
+                        {opt.label}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{opt.sub}</span>
+                    </button>
+                  ))}
+                </div>
+                {singleBooking === 'separate' && (
+                  <div style={{ marginTop: '0.625rem', padding: '0.75rem 1rem', background: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '8px' }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--orange)', margin: 0, lineHeight: 1.5 }}>
+                      <strong>Let op:</strong> EC 261/2004 geldt alleen bij één boekingsreferentie. Bij aparte tickets heb je bij een gemiste aansluiting geen claim op de tweede vlucht. Wij controleren dit voor je.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── STAP 3: Aanvullende vragen (annulering / oorzaak) ───────────── */}
+        {/* ── STAP 3: Aanvullende vragen ────────────────────────────────────── */}
 
-        {/* Vraag 3a: Annuleringsmelding — alleen bij geannuleerd */}
+        {/* Downgrade: ticketprijs invoeren */}
+        {params && params.type === 'downgrade' && (
+          <div style={{ marginBottom: '1.75rem' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
+              Wat kostte je ticket (per persoon)?
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.55 }}>
+              EC 261/2004 art. 10 vergoedt een percentage van de ticketprijs. Gebruik de prijs op je boekingsbevestiging.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ position: 'relative', flex: 1, maxWidth: '200px' }}>
+                <span style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>€</span>
+                <input
+                  type="number" min="0" step="1" value={ticketPrice}
+                  onChange={e => handleTicketPrice(e.target.value)}
+                  placeholder="bijv. 280"
+                  style={{
+                    width: '100%', border: '1.5px solid var(--border)', borderRadius: '8px',
+                    padding: '0.625rem 0.875rem 0.625rem 1.75rem', fontSize: '0.9375rem',
+                    fontFamily: 'var(--font-sora)', fontWeight: 700, color: 'var(--text)', outline: 'none',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+              <span style={{ fontSize: '0.775rem', color: 'var(--text-sub)' }}>per persoon</span>
+            </div>
+          </div>
+        )}
+
+        {/* Vraag 3a: Annuleringsmelding — 2-staps matrix (alleen bij geannuleerd) */}
         {params && params.type === 'geannuleerd' && (
           <div style={{ marginBottom: '1.75rem' }}>
             <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
@@ -817,29 +955,64 @@ export default function SelecteerPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {([
-                { val: 'lt14days' as CancellationNotice, label: 'Minder dan 14 dagen voor vertrek (of op de dag zelf)', sub: 'Je hebt recht op compensatie' },
-                { val: 'gt14days' as CancellationNotice, label: '14 dagen of meer voor vertrek', sub: 'Bij tijdige melding geldt geen compensatierecht' },
+                { val: 'no_notice' as const, label: 'Dag van de vlucht zelf (of niet gemeld)', sub: 'Altijd recht op compensatie', color: 'var(--blue)' },
+                { val: 'lt7' as const,       label: 'Minder dan 7 dagen van tevoren', sub: 'Mogelijk recht — afhankelijk van aangeboden alternatief', color: 'var(--blue)' },
+                { val: 'd7_13' as const,     label: '7 tot 13 dagen van tevoren', sub: 'Mogelijk recht — afhankelijk van aangeboden alternatief', color: 'var(--blue)' },
+                { val: 'gt14days' as const,  label: '14 dagen of meer van tevoren', sub: 'Geen compensatierecht (EC 261/2004 art. 5(1)(c))', color: 'var(--red)' },
               ]).map(opt => (
-                <button key={opt.val} type="button" onClick={() => handleCancellationNotice(opt.val)}
+                <button key={opt.val} type="button" onClick={() => handleNoticeWindow(opt.val)}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                     gap: '0.15rem', padding: '0.875rem 1.125rem', borderRadius: '10px', cursor: 'pointer',
-                    border: `2px solid ${cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'var(--red)' : 'var(--blue)') : 'var(--border)'}`,
-                    background: cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'rgba(220,38,38,0.05)' : 'var(--blue-light)') : '#fff',
+                    border: `2px solid ${noticeWindow === opt.val ? opt.color : 'var(--border)'}`,
+                    background: noticeWindow === opt.val ? (opt.val === 'gt14days' ? 'rgba(220,38,38,0.05)' : 'var(--blue-light)') : '#fff',
                     transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: cancellationNotice === opt.val ? (opt.val === 'gt14days' ? 'var(--red)' : 'var(--blue)') : 'var(--text)' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: noticeWindow === opt.val ? opt.color : 'var(--text)' }}>
                     {opt.label}
                   </span>
                   <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{opt.sub}</span>
                 </button>
               ))}
             </div>
-            {cancellationNotice === 'gt14days' && (
+
+            {/* Sub-vraag: adequaatheid alternatief (bij d7_13 of lt7) */}
+            {(noticeWindow === 'd7_13' || noticeWindow === 'lt7') && (
+              <div style={{ marginTop: '0.875rem', padding: '1rem 1.125rem', background: 'var(--blue-light)', border: '1px solid var(--blue-border)', borderRadius: '10px' }}>
+                <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-sub)', margin: '0 0 0.625rem' }}>
+                  {noticeWindow === 'd7_13'
+                    ? 'Was het alternatief acceptabel? (max. 2u eerder vertrek + max. 4u later aankomst)'
+                    : 'Was het alternatief acceptabel? (max. 1u eerder vertrek + max. 2u later aankomst)'}
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {[
+                    { val: false, label: 'Nee — slecht of geen alternatief', note: 'Recht op compensatie' },
+                    { val: true,  label: 'Ja — acceptabel alternatief', note: 'Geen compensatierecht' },
+                  ].map(opt => (
+                    <button key={String(opt.val)} type="button" onClick={() => handleAlternativeAdequate(opt.val)}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem',
+                        padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                        border: `2px solid ${alternativeAdequate === opt.val ? (opt.val ? 'var(--red)' : 'var(--green)') : 'var(--border)'}`,
+                        background: alternativeAdequate === opt.val ? (opt.val ? 'rgba(220,38,38,0.05)' : 'var(--green-dim)') : '#fff',
+                        transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: '0.8rem', color: alternativeAdequate === opt.val ? (opt.val ? 'var(--red)' : 'var(--green)') : 'var(--text)' }}>
+                        {opt.label}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{opt.note}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(cancellationNotice === 'gt14days' || cancellationNotice === 'd7_13_ok' || cancellationNotice === 'lt7_ok') && (
               <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px' }}>
                 <p style={{ fontSize: '0.8rem', color: 'var(--red)', margin: 0, lineHeight: 1.5 }}>
-                  <strong>Waarschijnlijk geen recht op compensatie</strong> bij aankondiging ≥ 14 dagen van tevoren (EC 261/2004 art. 5(1)(c)). Je kunt wel doorgaan als je twijfelt — een jurist beoordeelt je zaak kosteloos.
+                  <strong>Waarschijnlijk geen recht op compensatie</strong> op basis van de aankondiging (EC 261/2004 art. 5(1)(c)). Ga toch door als je twijfelt — een jurist beoordeelt je zaak kosteloos.
                 </p>
               </div>
             )}
@@ -854,27 +1027,60 @@ export default function SelecteerPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {([
-                { val: 'unknown' as CauseType, label: 'Weet ik niet / Airline noemde geen reden', sub: 'Je kunt toch een claim indienen — wij onderzoeken dit' },
-                { val: 'technical' as CauseType, label: 'Technisch defect of staking airlinepersoneel', sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU Wallentin-Hermann)' },
-                { val: 'force' as CauseType, label: 'Extreme weersomstandigheden of ATC-staking', sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld' },
+                {
+                  val: 'unknown' as CauseType,
+                  label: 'Weet ik niet / airline noemde geen reden',
+                  sub: 'Je kunt toch een claim indienen — wij onderzoeken dit',
+                  forceMajeure: false,
+                },
+                {
+                  val: 'technical' as CauseType,
+                  label: 'Technisch defect',
+                  sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU C-549/07)',
+                  forceMajeure: false,
+                },
+                {
+                  val: 'airline-strike' as CauseType,
+                  label: 'Staking van airlinepersoneel (piloten, cabinecrew)',
+                  sub: 'GEEN force majeure — recht op compensatie (CJEU C-195/17 Krüsemann)',
+                  forceMajeure: false,
+                },
+                {
+                  val: 'ripple' as CauseType,
+                  label: 'Late inbound aircraft / rotatievertraging',
+                  sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU)',
+                  forceMajeure: false,
+                },
+                {
+                  val: 'atc-strike' as CauseType,
+                  label: 'ATC-staking (luchtverkeersleiding)',
+                  sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld (art. 5(3))',
+                  forceMajeure: true,
+                },
+                {
+                  val: 'weather' as CauseType,
+                  label: 'Extreme weersomstandigheden',
+                  sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld (art. 5(3))',
+                  forceMajeure: true,
+                },
               ]).map(opt => (
                 <button key={opt.val} type="button" onClick={() => handleCauseType(opt.val)}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                     gap: '0.15rem', padding: '0.875rem 1.125rem', borderRadius: '10px', cursor: 'pointer',
-                    border: `2px solid ${causeType === opt.val ? (opt.val === 'force' ? 'var(--orange)' : 'var(--blue)') : 'var(--border)'}`,
-                    background: causeType === opt.val ? (opt.val === 'force' ? 'rgba(249,115,22,0.07)' : 'var(--blue-light)') : '#fff',
+                    border: `2px solid ${causeType === opt.val ? (opt.forceMajeure ? 'var(--orange)' : 'var(--blue)') : 'var(--border)'}`,
+                    background: causeType === opt.val ? (opt.forceMajeure ? 'rgba(249,115,22,0.07)' : 'var(--blue-light)') : '#fff',
                     transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: causeType === opt.val ? (opt.val === 'force' ? 'var(--orange)' : 'var(--blue)') : 'var(--text)' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem', color: causeType === opt.val ? (opt.forceMajeure ? 'var(--orange)' : 'var(--blue)') : 'var(--text)' }}>
                     {opt.label}
                   </span>
                   <span style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{opt.sub}</span>
                 </button>
               ))}
             </div>
-            {causeType === 'force' && (
+            {(causeType === 'weather' || causeType === 'atc-strike') && (
               <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '8px' }}>
                 <p style={{ fontSize: '0.8rem', color: 'var(--orange)', margin: 0, lineHeight: 1.5 }}>
                   <strong>Mogelijk geen compensatierecht</strong> bij buitengewone omstandigheden (art. 5(3)). Ga toch door als je twijfelt — wij checken of de omstandigheid echt als force majeure kwalificeert.
@@ -1185,6 +1391,11 @@ export default function SelecteerPage() {
                 )
               })}
             </div>
+            {legValidationError && (
+              <div style={{ marginBottom: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--red)', margin: 0 }}>{legValidationError}</p>
+              </div>
+            )}
             <button onClick={proceedWithConnecting} className="btn-primary">
               {(() => {
                 const n = selectedLegs.filter(Boolean).length

@@ -7,6 +7,7 @@ export type CompensationResult = {
   amountPerPerson: number
   reason: string
   distanceKm: number | null
+  downgradePercentage?: number   // only set for downgrade type: 30 | 50 | 75
 }
 
 // ── EU / EEA scope ────────────────────────────────────────────────────────────
@@ -38,17 +39,37 @@ export type CompensationOpts = {
   carrierIsEu?: boolean                  // Is de maatschappij EU/EEA?
   cancellationNotice?: CancellationNotice
   causeType?: CauseType
+  ticketPriceEur?: number               // voor downgrade claims
+}
+
+// ── Force majeure check ───────────────────────────────────────────────────────
+// Alleen 'weather' en 'atc-strike' zijn echte buitengewone omstandigheden.
+// Airline-stakingen, rotatievertraging en technische defecten zijn GÉÉN
+// force majeure (CJEU C-195/17 Krüsemann; CJEU C-549/07 Wallentin-Hermann).
+function isForceMajeure(causeType?: CauseType): boolean {
+  return causeType === 'weather' || causeType === 'atc-strike' || causeType === 'force'
+}
+
+// ── Annulering: kwalificeer CancellationNotice ──────────────────────────────
+// Returns true als er géén compensatierecht is op basis van de aankondiging.
+function cancellationNoticeBlocksCompensation(notice?: CancellationNotice): boolean {
+  if (!notice) return false
+  if (notice === 'gt14days') return true      // ≥14 dagen → nooit compensatie
+  if (notice === 'd7_13_ok') return true      // 7-13 dagen, adequaat alternatief
+  if (notice === 'lt7_ok')   return true      // <7 dagen, adequaat alternatief
+  // d7_13_bad, lt7_bad, no_notice, lt14days (legacy) → wél compensatierecht
+  return false
 }
 
 // ── Hoofdfunctie ──────────────────────────────────────────────────────────────
 export function calculateCompensation(
   distanceKm: number | null,
   delayMinutes: number | null,
-  flightType: 'vertraagd' | 'geannuleerd' | 'geweigerd',
+  flightType: 'vertraagd' | 'geannuleerd' | 'geweigerd' | 'downgrade' | string,
   flightFound: boolean = false,
   opts: CompensationOpts = {}
 ): CompensationResult {
-  const { origin, destination, carrierIsEu, cancellationNotice, causeType } = opts
+  const { origin, destination, carrierIsEu, cancellationNotice, causeType, ticketPriceEur } = opts
 
   // 1. EU-scopecheck (art. 3) ─────────────────────────────────────────────────
   if (origin && destination) {
@@ -76,10 +97,9 @@ export function calculateCompensation(
   }
 
   // 2. Buitengewone omstandigheid (art. 5(3)) ────────────────────────────────
-  // Weersomstandigheden en ATC-staking zijn force majeure → geen vergoeding.
-  // Technische defecten en airline-stakingen zijn GEEN buitengewone omstandigheid
-  // (CJEU Wallentin-Hermann C-549/07; CJEU Krüsemann C-195/17).
-  if (causeType === 'force') {
+  // Alleen slecht weer en ATC-staking zijn force majeure.
+  // Airline-stakingen en technische defecten zijn GEEN buitengewone omstandigheid.
+  if (isForceMajeure(causeType)) {
     return {
       eligible: false,
       amountPerPerson: 0,
@@ -88,27 +108,38 @@ export function calculateCompensation(
     }
   }
 
-  // 3. Annulering: aankondigingstermijn (art. 5(1)(c)) ──────────────────────
+  // 3. Downgrade (art. 10) ────────────────────────────────────────────────────
+  if (flightType === 'downgrade') {
+    const intraEu = origin && destination ? isIntraEuRoute(origin, destination) : false
+    return buildDowngrade(distanceKm, intraEu, ticketPriceEur)
+  }
+
+  // 4. Annulering: aankondigingstermijn (art. 5(1)(c)) ──────────────────────
   if (flightType === 'geannuleerd') {
-    if (cancellationNotice === 'gt14days') {
+    if (cancellationNoticeBlocksCompensation(cancellationNotice)) {
+      const reasonMap: Partial<Record<CancellationNotice, string>> = {
+        gt14days: 'Annulering ≥ 14 dagen van tevoren gemeld — geen compensatierecht (EC 261/2004 art. 5(1)(c))',
+        d7_13_ok: 'Annulering 7–13 dagen van tevoren met adequaat alternatief — geen compensatierecht (EC 261/2004 art. 5(1)(c))',
+        lt7_ok:   'Annulering <7 dagen van tevoren met adequaat alternatief — geen compensatierecht (EC 261/2004 art. 5(1)(c))',
+      }
       return {
         eligible: false,
         amountPerPerson: 0,
         distanceKm,
-        reason: 'Annulering ≥ 14 dagen van tevoren gemeld — geen compensatierecht (EC 261/2004 art. 5(1)(c))',
+        reason: reasonMap[cancellationNotice!] ?? 'Geen compensatierecht op basis van annuleringsmelding',
       }
     }
     const intraEu = origin && destination ? isIntraEuRoute(origin, destination) : false
     return buildEligible(distanceKm, flightType, intraEu)
   }
 
-  // 4. Instapweigering (art. 4) — altijd in aanmerking ──────────────────────
+  // 5. Instapweigering (art. 4) — altijd in aanmerking ──────────────────────
   if (flightType === 'geweigerd') {
     const intraEu = origin && destination ? isIntraEuRoute(origin, destination) : false
     return buildEligible(distanceKm, flightType, intraEu)
   }
 
-  // 5. Vertraging: drempel > 3 uur aankomstvertraging (art. 6 + Sturgeon) ───
+  // 6. Vertraging: drempel > 3 uur aankomstvertraging (art. 6 + Sturgeon) ───
   // Alleen niet-in-aanmerking als we betrouwbare API-data hebben én < 3 uur.
   if (flightFound && delayMinutes !== null) {
     if (delayMinutes <= 180) {
@@ -162,6 +193,42 @@ function buildEligible(
 
   // Band (c): > 3.500 km, niet intra-EU → €600
   return { eligible: true, amountPerPerson: 600, distanceKm, reason: typeLabel ?? `Vlucht van ${distanceKm} km (meer dan 3.500 km, buiten EU/EEA)` }
+}
+
+// ── Hulpfunctie: downgrade (art. 10(2)) ───────────────────────────────────────
+// Passagier in lagere klasse dan geboekt: percentage van ticketprijs.
+function buildDowngrade(
+  distanceKm: number | null,
+  intraEu: boolean,
+  ticketPriceEur?: number,
+): CompensationResult {
+  let pct: number
+  let distLabel: string
+
+  if (distanceKm === null) {
+    pct = 50
+    distLabel = 'afstand onbekend'
+  } else if (distanceKm < 1500) {
+    pct = 30
+    distLabel = `vlucht van ${distanceKm} km`
+  } else if (distanceKm <= 3500 || intraEu) {
+    pct = 50
+    distLabel = `vlucht van ${distanceKm} km`
+  } else {
+    pct = 75
+    distLabel = `vlucht van ${distanceKm} km`
+  }
+
+  const amount = ticketPriceEur ? Math.round(ticketPriceEur * pct / 100) : 0
+  const reason = `Downgrade — ${pct}% van ticketprijs (${distLabel}, EC 261/2004 art. 10(2))`
+
+  return {
+    eligible: true,
+    amountPerPerson: amount,
+    distanceKm,
+    reason,
+    downgradePercentage: pct,
+  }
 }
 
 export function formatAmount(amount: number): string {
