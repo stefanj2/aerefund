@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import AnalyseForm from '@/components/AnalyseForm'
+import HeroSearchForm from '@/components/HeroSearchForm'
 import SiteNav from '@/components/SiteNav'
 import { AIRLINES } from '@/lib/airlines'
 import {
@@ -234,24 +234,6 @@ export default async function AirlinePage({
           background: `linear-gradient(100deg, #fff 0%, #fff 38%, rgba(255,255,255,0.92) 50%, rgba(255,255,255,0.30) 68%, ${accentColor}22 84%, ${accentColor}44 100%)`,
         }} />
 
-        {/* Airplane SVG — right side, large decorative */}
-        <div style={{
-          position: 'absolute',
-          right: '-2%',
-          top: '50%',
-          transform: 'translateY(-50%) rotate(-4deg)',
-          width: '52%',
-          maxWidth: '660px',
-          zIndex: 2,
-          opacity: 0.18,
-          pointerEvents: 'none',
-          filter: `drop-shadow(0 12px 40px ${accentColor}66)`,
-        }}
-          className="hero-plane"
-        >
-          <AirplaneSVG color={accentColor} opacity={1} />
-        </div>
-
         {/* Airline logo badge — top-right */}
         <div style={{
           position: 'absolute',
@@ -329,16 +311,7 @@ export default async function AirlinePage({
 
             {/* Search form */}
             <div style={{ marginBottom: '1.5rem' }}>
-              <div className="hero-form-card">
-                <p style={{
-                  fontSize: '0.7rem', fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  color: 'var(--text-muted)', marginBottom: '0.875rem',
-                }}>
-                  Gratis vluchtcheck — resultaat in 2 minuten
-                </p>
-                <AnalyseForm />
-              </div>
+              <HeroSearchForm />
             </div>
 
             {/* Trust badges */}
@@ -794,20 +767,8 @@ export default async function AirlinePage({
       {/* ══════════════════════════════════════════════════════════════════════
           BOTTOM CTA
       ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: 'var(--navy)', padding: '5rem 0', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative airplane in background */}
-        <div style={{
-          position: 'absolute',
-          right: '-5%', top: '50%',
-          transform: 'translateY(-50%) rotate(-6deg)',
-          width: '45%', maxWidth: '500px',
-          opacity: 0.06,
-          pointerEvents: 'none',
-        }}>
-          <AirplaneSVG color="#ffffff" opacity={1} />
-        </div>
-
-        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+      <section style={{ background: 'var(--navy)', padding: '5rem 0', textAlign: 'center' }}>
+        <div className="container">
           <p style={{
             fontSize: '0.7rem', fontWeight: 700,
             letterSpacing: '0.12em', textTransform: 'uppercase',
