@@ -981,7 +981,7 @@ export default function SelecteerPage() {
         {params && params.type === 'geannuleerd' && (
           <div style={{ marginBottom: '1.75rem' }}>
             <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.75rem' }}>
-              Wat was de oorzaak van de {params.type === 'vertraagd' ? 'vertraging' : 'annulering'}?
+              Wat was de oorzaak van de annulering?
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {([
