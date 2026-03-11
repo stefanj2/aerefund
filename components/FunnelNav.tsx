@@ -18,11 +18,13 @@ type FlightInfo = {
 
 type Props = {
   step: 1 | 2 | 3 | 4
+  progress?: number   // 0-100 override for the progress line (optional)
   flightInfo?: FlightInfo
   badge?: React.ReactNode
 }
 
-export default function FunnelNav({ step, flightInfo, badge }: Props) {
+export default function FunnelNav({ step, progress, flightInfo, badge }: Props) {
+  const pct = progress !== undefined ? progress : (step / 4) * 100
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 50,
@@ -35,7 +37,7 @@ export default function FunnelNav({ step, flightInfo, badge }: Props) {
       {/* Progress accent line */}
       <div style={{
         height: '3px',
-        background: `linear-gradient(90deg, var(--blue) 0%, var(--blue) ${(step / 4) * 100}%, var(--border) ${(step / 4) * 100}%, var(--border) 100%)`,
+        background: `linear-gradient(90deg, var(--blue) 0%, var(--blue) ${pct}%, var(--border) ${pct}%, var(--border) 100%)`,
         transition: 'all 0.4s ease',
       }} />
 

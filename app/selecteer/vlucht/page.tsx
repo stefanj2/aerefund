@@ -285,7 +285,7 @@ export default function SelecteerVluchtPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: isMultiLeg && selectedLegs.some(s => s) ? '9rem' : '4rem' }}>
-      <FunnelNav step={2} />
+      <FunnelNav step={1} progress={50} />
 
       <div className="funnel-grid" style={{ paddingTop: '2.5rem' }}>
         <div>
@@ -313,13 +313,6 @@ export default function SelecteerVluchtPage() {
               </div>
             </div>
           )}
-
-          {/* Sub-step indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '1.5rem' }}>
-            {[1, 2, 3].map(n => (
-              <div key={n} style={{ height: '3px', flex: 1, borderRadius: '2px', background: 'var(--blue)' }} />
-            ))}
-          </div>
 
           <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '1.25rem', color: 'var(--navy)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
             Selecteer jouw vlucht
