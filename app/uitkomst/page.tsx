@@ -273,7 +273,12 @@ export default function UitkomstPage() {
         body: JSON.stringify({ token, passengers, status: 'claim_started' }),
       }).catch(() => {/* ignore */})
     }
-    sessionStorage.setItem('vv_claim', JSON.stringify({ flight, compensation, passengers, token }))
+    sessionStorage.setItem('vv_claim', JSON.stringify({
+      flight,
+      compensation: { ...compensation, amountPerPerson: effectiveAmountPerPerson },
+      passengers,
+      token,
+    }))
     router.push('/formulier')
   }
 

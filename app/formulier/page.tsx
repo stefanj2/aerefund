@@ -100,6 +100,8 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
       const errs = validateStep1()
       if (Object.keys(errs).length > 0) { setErrors(errs); return }
       setErrors({})
+      // Auto-skip medereizgers-step when traveling alone
+      if (coPassengers.length === 0) { setStep(3); return }
     }
     if (step < 3) setStep(step + 1)
   }
@@ -288,7 +290,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                 Jouw gegevens
               </h2>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                We dienen de claim in op jouw naam — vul je gegevens in zoals op je paspoort.
+                We dienen de claim in op jouw naam. Je adres hebben we nodig voor de officiële claimbrief naar {airline.name}.
               </p>
 
               <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
@@ -350,7 +352,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
               </div>
 
               <button onClick={handleNext} className="btn-cta" style={{ marginTop: '0.5rem' }}>
-                Volgende stap
+                {coPassengers.length > 0 ? 'Doorgaan naar medereizgers' : 'Doorgaan naar indienen'}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -428,7 +430,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 <button onClick={handleNext} className="btn-cta">
-                  Volgende stap
+                  Doorgaan naar indienen
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

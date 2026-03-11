@@ -104,7 +104,12 @@ export default function BevestigingPage() {
         {/* Invoice notice */}
         <div className="card-orange mb-5 animate-fade-in">
           <div className="flex items-start gap-3">
-            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🧾</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(255,107,43,0.15)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path d="M5 3h10a1 1 0 0 1 1 1v13l-2-1.5L12 17l-2-1.5L8 17l-2-1.5L4 17V4a1 1 0 0 1 1-1z" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 8h4M8 11h3" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
             <div>
               <p className="font-semibold mb-1 text-sm" style={{ fontFamily: 'var(--font-sora)' }}>
                 Factuur van €42 volgt binnen 24 uur
@@ -179,7 +184,14 @@ export default function BevestigingPage() {
         {/* Referral */}
         <div className="card-green animate-fade-in">
           <div className="flex items-start gap-3 mb-4">
-            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🎁</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--green-dim)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path d="M10 7V4M10 4C10 4 8.5 2 7 2s-2.5 1-2.5 2S6 6 10 4zM10 4c0 0 1.5-2 3-2s2.5 1 2.5 2-1.5 2-5.5 0z" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="3" y="7" width="14" height="3" rx="1" stroke="var(--green)" strokeWidth="1.5" />
+                <path d="M4 10v8h12v-8" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M10 10v8" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
             <div>
               <p className="font-semibold mb-1 text-sm" style={{ fontFamily: 'var(--font-sora)' }}>
                 Deel met vrienden — zij besparen €10

@@ -192,9 +192,6 @@ export default function SelecteerPage() {
   // Connecting flight: één boeking of aparte tickets?
   const [singleBooking, setSingleBooking] = useState<'single' | 'separate' | null>(null)
 
-  // Downgrade: ticketprijs (nodig voor art. 10 berekening)
-  const [ticketPrice, setTicketPrice] = useState('')
-
   // Multi-leg validatie error
   const [legValidationError, setLegValidationError] = useState<string | null>(null)
 
@@ -243,14 +240,6 @@ export default function SelecteerPage() {
     updateRouteParam('singleBooking', val)
   }
 
-  function handleTicketPrice(val: string) {
-    setTicketPrice(val)
-    const num = parseFloat(val.replace(',', '.'))
-    if (!isNaN(num) && num > 0) {
-      updateRouteParam('ticketPriceEur', num)
-    }
-  }
-
   function handleTypeChange(newType: FlightType) {
     if (!params) return
     // Reset all flight state
@@ -273,7 +262,6 @@ export default function SelecteerPage() {
     setNoticeWindow(null)
     setAlternativeAdequate(null)
     setSingleBooking(null)
-    setTicketPrice('')
     setLegValidationError(null)
     const updated: RouteSearchParams = { ...params, type: newType, cancellationNotice: undefined, causeType: undefined, singleBooking: undefined, ticketPriceEur: undefined }
     setParams(updated)
@@ -917,36 +905,6 @@ export default function SelecteerPage() {
 
         {/* ── STAP 3: Aanvullende vragen ────────────────────────────────────── */}
 
-        {/* Downgrade: ticketprijs invoeren */}
-        {params && params.type === 'downgrade' && (
-          <div style={{ marginBottom: '1.75rem' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
-              Wat kostte je ticket (per persoon)?
-            </p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.55 }}>
-              EC 261/2004 art. 10 vergoedt een percentage van de ticketprijs. Gebruik de prijs op je boekingsbevestiging.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ position: 'relative', flex: 1, maxWidth: '200px' }}>
-                <span style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>€</span>
-                <input
-                  type="number" min="0" step="1" value={ticketPrice}
-                  onChange={e => handleTicketPrice(e.target.value)}
-                  placeholder="bijv. 280"
-                  style={{
-                    width: '100%', border: '1.5px solid var(--border)', borderRadius: '8px',
-                    padding: '0.625rem 0.875rem 0.625rem 1.75rem', fontSize: '0.9375rem',
-                    fontFamily: 'var(--font-sora)', fontWeight: 700, color: 'var(--text)', outline: 'none',
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                />
-              </div>
-              <span style={{ fontSize: '0.775rem', color: 'var(--text-sub)' }}>per persoon</span>
-            </div>
-          </div>
-        )}
-
         {/* Vraag 3a: Annuleringsmelding — 2-staps matrix (alleen bij geannuleerd) */}
         {params && params.type === 'geannuleerd' && (
           <div style={{ marginBottom: '1.75rem' }}>
@@ -1029,38 +987,20 @@ export default function SelecteerPage() {
               {([
                 {
                   val: 'unknown' as CauseType,
-                  label: 'Weet ik niet / airline noemde geen reden',
-                  sub: 'Je kunt toch een claim indienen — wij onderzoeken dit',
+                  label: 'Ik weet het niet / geen reden opgegeven',
+                  sub: 'Meest gekozen — wij onderzoeken de oorzaak voor jou',
                   forceMajeure: false,
                 },
                 {
                   val: 'technical' as CauseType,
-                  label: 'Technisch defect',
-                  sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU C-549/07)',
+                  label: 'Technisch defect, staking of andere reden',
+                  sub: 'Geen overmacht — jij hebt recht op compensatie',
                   forceMajeure: false,
-                },
-                {
-                  val: 'airline-strike' as CauseType,
-                  label: 'Staking van airlinepersoneel (piloten, cabinecrew)',
-                  sub: 'GEEN force majeure — recht op compensatie (CJEU C-195/17 Krüsemann)',
-                  forceMajeure: false,
-                },
-                {
-                  val: 'ripple' as CauseType,
-                  label: 'Late inbound aircraft / rotatievertraging',
-                  sub: 'Geen buitengewone omstandigheid — recht op compensatie (CJEU)',
-                  forceMajeure: false,
-                },
-                {
-                  val: 'atc-strike' as CauseType,
-                  label: 'ATC-staking (luchtverkeersleiding)',
-                  sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld (art. 5(3))',
-                  forceMajeure: true,
                 },
                 {
                   val: 'weather' as CauseType,
-                  label: 'Extreme weersomstandigheden',
-                  sub: 'Buitengewone omstandigheid — airline mogelijk vrijgesteld (art. 5(3))',
+                  label: 'Extreem slecht weer of luchtverkeersstaking',
+                  sub: 'Ga toch door als je twijfelt — wij toetsen of dit echt overmacht was',
                   forceMajeure: true,
                 },
               ]).map(opt => (
