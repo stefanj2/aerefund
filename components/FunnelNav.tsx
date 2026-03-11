@@ -23,6 +23,14 @@ type Props = {
   badge?: React.ReactNode
 }
 
+function timeLeft(pct: number): string {
+  if (pct <= 17) return 'nog ~2 min'
+  if (pct <= 33) return 'nog ~1½ min'
+  if (pct <= 50) return 'nog ~1 min'
+  if (pct <= 75) return 'nog ~30 sec'
+  return ''
+}
+
 export default function FunnelNav({ step, progress, flightInfo, badge }: Props) {
   const pct = progress !== undefined ? progress : (step / 4) * 100
   return (
@@ -132,12 +140,24 @@ export default function FunnelNav({ step, progress, flightInfo, badge }: Props) 
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <rect x="1.5" y="5.5" width="10" height="6" rx="1.5" stroke="var(--green)" strokeWidth="1.2" />
-                <path d="M4 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="var(--green)" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>Veilig & SSL</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              {timeLeft(pct) && (
+                <span style={{
+                  fontSize: '0.7rem', fontWeight: 600, color: 'var(--blue)',
+                  background: 'var(--blue-light)', border: '1px solid var(--blue-border)',
+                  borderRadius: '20px', padding: '0.2rem 0.625rem',
+                  transition: 'all 0.3s ease',
+                }}>
+                  {timeLeft(pct)}
+                </span>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <rect x="1.5" y="5.5" width="10" height="6" rx="1.5" stroke="var(--green)" strokeWidth="1.2" />
+                  <path d="M4 5.5V4a2.5 2.5 0 0 1 5 0v1.5" stroke="var(--green)" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>SSL</span>
+              </div>
             </div>
           )}
         </div>
