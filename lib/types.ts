@@ -45,6 +45,7 @@ export type RouteSearchParams = {
   causeType?: CauseType
   singleBooking?: 'single' | 'separate'  // connecting flights: one booking or separate tickets?
   ticketPriceEur?: number                // downgrade claims: paid ticket price in EUR
+  stopover?: 'yes' | 'no'               // had je een tussenstop?
 }
 
 export type RouteFlightOption = {
