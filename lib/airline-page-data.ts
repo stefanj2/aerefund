@@ -214,3 +214,40 @@ export function getAirlineFaqs(iata: string): FAQ[] {
   if (!config) return []
   return buildFaqs(config)
 }
+
+// ── Hero photo URLs ───────────────────────────────────────────────────────────
+// Aircraft-in-flight photos from Unsplash, varied per airline
+
+const AIRLINE_HERO_PHOTOS: Record<string, string> = {
+  // Netherlands / Belgium
+  KL: 'photo-1529074963764-98f45c47344b?q=85&w=1600&auto=format&fit=crop', // blue wide-body KLM style
+  HV: 'photo-1556388158-158ea5ccacbd?q=85&w=1600&auto=format&fit=crop', // aircraft in flight
+  FR: 'photo-1474302770737-173ee21bab63?q=85&w=1600&auto=format&fit=crop', // aircraft take-off
+  U2: 'photo-1530800431954-ffdc3e2e9f42?q=85&w=1600&auto=format&fit=crop', // orange-sky aircraft
+  TB: 'photo-1569154941061-e231b4aa8159?q=85&w=1600&auto=format&fit=crop', // vacation/charter plane
+  CD: 'photo-1569154941061-e231b4aa8159?q=85&w=1600&auto=format&fit=crop',
+  LH: 'photo-1436491865332-7a61a109cc05?q=85&w=1600&auto=format&fit=crop&crop=focalpoint&fp-x=0.65&fp-y=0.45',
+  AF: 'photo-1483450388369-9ed95738483c?q=85&w=1600&auto=format&fit=crop', // aircraft approaching
+  BA: 'photo-1520437358207-323b43f51fb7?q=85&w=1600&auto=format&fit=crop', // aircraft clouds
+  W6: 'photo-1570710891163-6d3b5c47248b?q=85&w=1600&auto=format&fit=crop', // budget airline style
+  DY: 'photo-1556388158-158ea5ccacbd?q=85&w=1600&auto=format&fit=crop',
+  TK: 'photo-1529074963764-98f45c47344b?q=85&w=1600&auto=format&fit=crop',
+}
+
+// Fallback pool — 6 distinct aviation photos cycling by hash
+const AVIATION_PHOTO_POOL = [
+  'photo-1436491865332-7a61a109cc05?q=85&w=1600&auto=format&fit=crop&crop=focalpoint&fp-x=0.65&fp-y=0.45',
+  'photo-1474302770737-173ee21bab63?q=85&w=1600&auto=format&fit=crop',
+  'photo-1530800431954-ffdc3e2e9f42?q=85&w=1600&auto=format&fit=crop',
+  'photo-1570710891163-6d3b5c47248b?q=85&w=1600&auto=format&fit=crop',
+  'photo-1520437358207-323b43f51fb7?q=85&w=1600&auto=format&fit=crop',
+  'photo-1483450388369-9ed95738483c?q=85&w=1600&auto=format&fit=crop',
+]
+
+export function getHeroPhotoUrl(iata: string): string {
+  const key = iata.toUpperCase()
+  const specific = AIRLINE_HERO_PHOTOS[key]
+  if (specific) return `https://images.unsplash.com/${specific}`
+  const h = simpleHash(key)
+  return `https://images.unsplash.com/${AVIATION_PHOTO_POOL[h % AVIATION_PHOTO_POOL.length]}`
+}

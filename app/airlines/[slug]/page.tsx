@@ -9,6 +9,7 @@ import {
   getIataFromSlug,
   getFlightRecords,
   getAirlineFaqs,
+  getHeroPhotoUrl,
 } from '@/lib/airline-page-data'
 import { getReviewsForAirline } from '@/data/reviews'
 
@@ -167,7 +168,8 @@ export default async function AirlinePage({
   const faqs    = getAirlineFaqs(iata)
   const reviews = getReviewsForAirline(iata).slice(0, 2)
 
-  const accentColor = cfg.color ?? '#1a56db'
+  const accentColor  = cfg.color ?? '#1a56db'
+  const heroPhotoUrl = getHeroPhotoUrl(iata)
 
   const difficultyMap = {
     easy:   { label: 'Relatief makkelijk', color: '#15803d', bg: 'rgba(21,128,61,0.09)', border: 'rgba(21,128,61,0.25)' },
@@ -219,12 +221,12 @@ export default async function AirlinePage({
           background: '#e8edf5',
         }}
       >
-        {/* Airport background photo */}
+        {/* Airline aircraft photo */}
         <Image
-          src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=85&w=1600&auto=format&fit=crop&crop=focalpoint&fp-x=0.65&fp-y=0.45"
-          alt={`${cfg.name} vlucht vertraagd compensatie`}
+          src={heroPhotoUrl}
+          alt={`${cfg.name} vliegtuig in vlucht`}
           fill
-          style={{ objectFit: 'cover', objectPosition: 'right center' }}
+          style={{ objectFit: 'cover', objectPosition: 'center 40%' }}
           priority
         />
 
