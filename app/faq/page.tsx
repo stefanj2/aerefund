@@ -3,8 +3,9 @@ import Link from 'next/link'
 import SiteNav from '@/components/SiteNav'
 
 export const metadata: Metadata = {
-  title: 'Veelgestelde vragen — Aerefund.nl',
-  description: 'Antwoorden op de meest gestelde vragen over vluchtclaims, EC 261/2004 compensatie, kosten en het claimproces bij Aerefund.nl.',
+  title: 'Veelgestelde vragen',
+  description: 'Antwoorden op de meest gestelde vragen over vluchtclaims, EC 261/2004 compensatie, kosten en het claimproces bij Aerefund.com.',
+  alternates: { canonical: 'https://aerefund.com/faq' },
 }
 
 const FAQ_CATEGORIES = [
@@ -94,9 +95,22 @@ const FAQ_CATEGORIES = [
   },
 ]
 
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_CATEGORIES.flatMap((cat) =>
+    cat.items.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    }))
+  ),
+}
+
 export default function FAQPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-inter)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <SiteNav />
 
       {/* Hero */}
@@ -167,7 +181,7 @@ export default function FAQPage() {
 
       <footer style={{ background: 'var(--navy)', padding: '2rem 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.nl</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.com</p>
           <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
             <Link href="/privacy" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Privacy</Link>
             <Link href="/algemene-voorwaarden" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Voorwaarden</Link>

@@ -282,9 +282,40 @@ function SectionLabel({ children, dark = false }: { children: React.ReactNode; d
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Aerefund',
+  url: 'https://aerefund.com',
+  logo: 'https://aerefund.com/logo-aerefund.png',
+  description: 'Aerefund helpt Nederlandse reizigers hun vluchtcompensatie te claimen op basis van EC 261/2004.',
+  contactPoint: { '@type': 'ContactPoint', email: 'info@aerefund.com', contactType: 'customer service', availableLanguage: 'Dutch' },
+  address: { '@type': 'PostalAddress', streetAddress: 'Keurenplein 24', addressLocality: 'Amsterdam', postalCode: '1069 CD', addressCountry: 'NL' },
+  legalName: 'GoodbyeGuru',
+  foundingDate: '2024',
+}
+
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'Vluchtcompensatie claimen via Aerefund',
+  provider: { '@type': 'Organization', name: 'Aerefund', url: 'https://aerefund.com' },
+  description: 'Aerefund dient vluchtclaims in op basis van EU-verordening EC 261/2004 voor vertraagde en geannuleerde vluchten. €250–€600 compensatie per passagier.',
+  areaServed: 'NL',
+  serviceType: 'Vluchtclaim indienen',
+  offers: {
+    '@type': 'Offer',
+    price: '42',
+    priceCurrency: 'EUR',
+    description: 'Vaste intake-fee per claim. Bij succes ook 10% commissie.',
+  },
+}
+
 export default function Home() {
   return (
     <main style={{ background: '#fff' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
 
       <SiteNav />
 

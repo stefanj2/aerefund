@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import SiteNav from '@/components/SiteNav'
+import ContactForm from '@/components/ContactForm'
 
 export const metadata: Metadata = {
-  title: 'Contact — Aerefund.nl',
-  description: 'Neem contact op met Aerefund.nl. Vragen over je claim, de kosten of het claimproces? Wij helpen je graag.',
+  title: 'Contact',
+  alternates: { canonical: 'https://aerefund.com/contact' },
+  description: 'Neem contact op met Aerefund.com. Vragen over je claim, de kosten of het claimproces? Wij helpen je graag.',
 }
 
 const TOPICS = [
@@ -17,7 +19,7 @@ const TOPICS = [
     ),
     title: 'Lopende claim',
     desc: 'Vragen over een claim die je al hebt ingediend? Vermeld je vluchtnummer en naam zodat we snel kunnen zoeken.',
-    email: 'claim@aerefund.nl',
+    email: 'claim@aerefund.com',
     responseTime: 'Reactie binnen 1 werkdag',
   },
   {
@@ -29,7 +31,7 @@ const TOPICS = [
     ),
     title: 'Algemene vragen',
     desc: 'Vragen over kosten, het proces of of jouw vlucht in aanmerking komt? We helpen je graag op weg.',
-    email: 'info@aerefund.nl',
+    email: 'info@aerefund.com',
     responseTime: 'Reactie binnen 2 werkdagen',
   },
   {
@@ -42,7 +44,7 @@ const TOPICS = [
     ),
     title: 'Privacy & persoonsgegevens',
     desc: 'Verzoeken voor inzage, rectificatie of verwijdering van je gegevens conform de AVG.',
-    email: 'privacy@aerefund.nl',
+    email: 'privacy@aerefund.com',
     responseTime: 'Reactie binnen 30 dagen (wettelijk vereist)',
   },
 ]
@@ -108,6 +110,15 @@ export default function ContactPage() {
           </div>
         </section>
 
+        {/* Contact form */}
+        <section style={{ marginBottom: '3.5rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1rem', paddingBottom: '0.625rem', borderBottom: '1.5px solid var(--border)' }}>
+            Stuur ons een bericht
+          </h2>
+
+          <ContactForm />
+        </section>
+
         {/* Quick links */}
         <section style={{ marginBottom: '3.5rem' }}>
           <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1rem', paddingBottom: '0.625rem', borderBottom: '1.5px solid var(--border)' }}>
@@ -141,12 +152,12 @@ export default function ContactPage() {
             </h2>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-sub)', lineHeight: 2 }}>
               <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>Bedrijfsnaam:</strong> GoodbyeGuru</p>
-              <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>Handelsnaam:</strong> Aerefund.nl</p>
+              <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>Handelsnaam:</strong> Aerefund.com</p>
               <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>KvK-nummer:</strong> 67332706</p>
               <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>BTW-nummer:</strong> NL224452794B01</p>
               <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>Adres:</strong> Keurenplein 24, 1069 CD Amsterdam</p>
               <p style={{ margin: 0 }}><strong style={{ color: 'var(--text)', fontWeight: 600 }}>Email algemeen:</strong>{' '}
-                <a href="mailto:info@aerefund.nl" style={{ color: 'var(--blue)', textDecoration: 'none' }}>info@aerefund.nl</a>
+                <a href="mailto:info@aerefund.com" style={{ color: 'var(--blue)', textDecoration: 'none' }}>info@aerefund.com</a>
               </p>
             </div>
           </div>
@@ -156,7 +167,7 @@ export default function ContactPage() {
 
       <footer style={{ background: 'var(--navy)', padding: '2rem 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.nl</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.com</p>
           <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
             <Link href="/privacy" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Privacy</Link>
             <Link href="/algemene-voorwaarden" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Voorwaarden</Link>

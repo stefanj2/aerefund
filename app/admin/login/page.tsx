@@ -149,7 +149,7 @@ export default function AdminLoginPage() {
         </div>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Aerefund.nl — Intern beheerportaal
+          Aerefund.com — Intern beheerportaal
         </p>
       </div>
     </div>

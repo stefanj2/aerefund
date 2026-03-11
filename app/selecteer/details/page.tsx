@@ -7,6 +7,7 @@ import AirportCombobox from '@/components/AirportCombobox'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
 import { suggestVia } from '@/lib/via-suggestions'
+import { trackDetailsComplete } from '@/lib/analytics'
 import type { RouteSearchParams, CancellationNotice, CauseType } from '@/lib/types'
 
 export default function SelecteerDetailsPage() {
@@ -114,6 +115,7 @@ export default function SelecteerDetailsPage() {
   }
 
   // Validation: can we proceed?
+  const dateDone = !!params?.date
   const stopoverDone = stopover !== null
   const viaComplete = stopover !== 'yes' || (viaAirports.length > 0 && !addingVia)
   const noticeDone = params?.type !== 'geannuleerd' || (
@@ -121,7 +123,7 @@ export default function SelecteerDetailsPage() {
     ((noticeWindow === 'd7_13' || noticeWindow === 'lt7') && alternativeAdequate !== null)
   )
   const causeDone = params?.type !== 'geannuleerd' || causeType !== null
-  const canProceed = stopoverDone && viaComplete && noticeDone && causeDone
+  const canProceed = dateDone && stopoverDone && viaComplete && noticeDone && causeDone
 
   const originName = params ? (AIRPORTS[params.origin]?.name ?? params.origin) : ''
   const destinationName = params ? (AIRPORTS[params.destination]?.name ?? params.destination) : ''
@@ -448,7 +450,7 @@ export default function SelecteerDetailsPage() {
           {/* Doorgaan button */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             <button
-              onClick={() => canProceed && router.push('/selecteer/vlucht')}
+              onClick={() => { if (!canProceed || !params) return; trackDetailsComplete({ claimType: params.type ?? '', hasStopover: stopover === 'yes', date: params.date ?? '' }); router.push('/selecteer/vlucht') }}
               disabled={!canProceed}
               className="btn-cta"
               style={{ opacity: canProceed ? 1 : 0.45, cursor: canProceed ? 'pointer' : 'not-allowed' }}

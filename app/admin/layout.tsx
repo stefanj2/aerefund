@@ -25,6 +25,17 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    href: '/admin/funnel',
+    label: 'Funnel',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="2" width="14" height="3" rx="1" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="3" y="7" width="10" height="3" rx="1" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="5.5" y="12" width="5" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

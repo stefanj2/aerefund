@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AIRPORTS, haversineDistance } from '@/lib/airports'
 import { getAirlineConfig } from '@/lib/airlines'
 import { calculateCompensation } from '@/lib/compensation'
+import { trackFlightSelected } from '@/lib/analytics'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
 import type { RouteSearchParams, RouteFlightOption } from '@/lib/types'
@@ -221,14 +222,17 @@ export default function SelecteerVluchtPage() {
       ...(claimDistanceKm != null ? { claimDistanceKm } : {}),
       prefetchedFlight,
     }))
+    trackFlightSelected({ flightNumber: flight.flightNumber, airline: flight.airline, iataPrefix: flight.iataPrefix, claimType: params.type ?? '', isManual: false })
     router.push('/laden')
   }, [params, router])
 
   const selectManual = useCallback(() => {
     if (!params || !manualFlight.trim()) return
+    const fn = manualFlight.trim().toUpperCase()
     sessionStorage.setItem('vv_search', JSON.stringify({
-      flightNumber: manualFlight.trim().toUpperCase(), date: params.date, type: params.type,
+      flightNumber: fn, date: params.date, type: params.type,
     }))
+    trackFlightSelected({ flightNumber: fn, airline: '', iataPrefix: fn.slice(0, 2), claimType: params.type ?? '', isManual: true })
     router.push('/laden')
   }, [params, manualFlight, router])
 

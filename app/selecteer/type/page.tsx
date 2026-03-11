@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AIRPORTS } from '@/lib/airports'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
+import { trackFunnelStart, trackTypeSelected } from '@/lib/analytics'
 import type { RouteSearchParams, FlightType } from '@/lib/types'
 
 const TYPE_OPTIONS: { val: FlightType; label: string; sub: string; icon: React.ReactNode }[] = [
@@ -66,6 +67,7 @@ export default function SelecteerTypePage() {
     const p = JSON.parse(raw) as RouteSearchParams
     setParams(p)
     if (p.type) setSelected(p.type)
+    trackFunnelStart(p.type ?? 'unknown')
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelect(type: FlightType) {
@@ -87,6 +89,7 @@ export default function SelecteerTypePage() {
 
   function handleNext() {
     if (!selected) return
+    trackTypeSelected(selected)
     router.push('/selecteer/details')
   }
 

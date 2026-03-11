@@ -3,8 +3,9 @@ import Link from 'next/link'
 import SiteNav from '@/components/SiteNav'
 
 export const metadata: Metadata = {
-  title: 'Privacyverklaring — Aerefund.nl',
-  description: 'Privacyverklaring van Aerefund.nl. Hoe wij omgaan met jouw persoonsgegevens conform de AVG (GDPR).',
+  title: 'Privacyverklaring',
+  alternates: { canonical: 'https://aerefund.com/privacy' },
+  description: 'Privacyverklaring van Aerefund.com. Hoe wij omgaan met jouw persoonsgegevens conform de AVG (GDPR).',
 }
 
 export default function PrivacyPage() {
@@ -23,7 +24,7 @@ export default function PrivacyPage() {
           Privacyverklaring
         </h1>
         <p style={{ fontSize: '1rem', color: 'var(--text-sub)', marginBottom: '3rem', lineHeight: 1.6 }}>
-          Aerefund.nl respecteert jouw privacy en verwerkt persoonsgegevens conform de Algemene Verordening Gegevensbescherming (AVG / GDPR).
+          Aerefund.com respecteert jouw privacy en verwerkt persoonsgegevens conform de Algemene Verordening Gegevensbescherming (AVG / GDPR).
         </p>
 
         <LegalSection title="1. Verwerkingsverantwoordelijke">
@@ -35,11 +36,11 @@ export default function PrivacyPage() {
             padding: '1rem 1.25rem', fontSize: '0.875rem', lineHeight: 1.8,
           }}>
             <strong>GoodbyeGuru</strong><br />
-            Handelend onder: Aerefund.nl<br />
+            Handelend onder: Aerefund.com<br />
             KvK-nummer: 67332706<br />
             BTW-nummer: NL224452794B01<br />
             Adres: Keurenplein 24, 1069 CD Amsterdam<br />
-            E-mail: <a href="mailto:privacy@aerefund.nl" style={{ color: 'var(--blue)' }}>privacy@aerefund.nl</a>
+            E-mail: <a href="mailto:privacy@aerefund.com" style={{ color: 'var(--blue)' }}>privacy@aerefund.com</a>
           </div>
         </LegalSection>
 
@@ -109,13 +110,13 @@ export default function PrivacyPage() {
             <li><strong>Recht van bezwaar (art. 21 AVG):</strong> je kunt bezwaar maken tegen verwerking op basis van gerechtvaardigd belang.</li>
           </ul>
           <p>
-            Verzoeken kun je indienen via <a href="mailto:privacy@aerefund.nl" style={{ color: 'var(--blue)' }}>privacy@aerefund.nl</a>. Wij reageren binnen 30 dagen.
+            Verzoeken kun je indienen via <a href="mailto:privacy@aerefund.com" style={{ color: 'var(--blue)' }}>privacy@aerefund.com</a>. Wij reageren binnen 30 dagen.
           </p>
         </LegalSection>
 
         <LegalSection title="7. Beveiliging">
           <p>
-            Aerefund.nl neemt passende technische en organisatorische maatregelen om jouw persoonsgegevens te beveiligen, waaronder:
+            Aerefund.com neemt passende technische en organisatorische maatregelen om jouw persoonsgegevens te beveiligen, waaronder:
           </p>
           <ul>
             <li>Versleutelde verbindingen (HTTPS/TLS) voor alle dataoverdracht;</li>
@@ -129,7 +130,7 @@ export default function PrivacyPage() {
 
         <LegalSection title="8. Cookies">
           <p>
-            Aerefund.nl maakt gebruik van <strong>functionele cookies</strong> die noodzakelijk zijn voor de werking van de website (bijv. sessieopslag voor het claimproces). Voor deze cookies is geen toestemming vereist.
+            Aerefund.com maakt gebruik van <strong>functionele cookies</strong> die noodzakelijk zijn voor de werking van de website (bijv. sessieopslag voor het claimproces). Voor deze cookies is geen toestemming vereist.
           </p>
           <p>
             Wij plaatsen <strong>geen analytische of tracking cookies van derden</strong> zonder jouw toestemming. Indien wij in de toekomst analytische tools inzetten, zullen wij je hierover vooraf informeren en jouw toestemming vragen.
@@ -152,7 +153,7 @@ export default function PrivacyPage() {
 
         <LegalSection title="10. Wijzigingen">
           <p>
-            Wij behouden het recht deze privacyverklaring te wijzigen. De meest recente versie is altijd beschikbaar op <strong>aerefund.nl/privacy</strong>. Bij wezenlijke wijzigingen informeren wij jou per email.
+            Wij behouden het recht deze privacyverklaring te wijzigen. De meest recente versie is altijd beschikbaar op <strong>aerefund.com/privacy</strong>. Bij wezenlijke wijzigingen informeren wij jou per email.
           </p>
         </LegalSection>
 
@@ -160,7 +161,7 @@ export default function PrivacyPage() {
         <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
             Vragen over deze privacyverklaring?{' '}
-            <a href="mailto:privacy@aerefund.nl" style={{ color: 'var(--blue)' }}>privacy@aerefund.nl</a>
+            <a href="mailto:privacy@aerefund.com" style={{ color: 'var(--blue)' }}>privacy@aerefund.com</a>
           </p>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             <Link href="/algemene-voorwaarden" style={{ fontSize: '0.8125rem', color: 'var(--blue)', textDecoration: 'none' }}>Algemene voorwaarden →</Link>
@@ -171,7 +172,7 @@ export default function PrivacyPage() {
 
       <footer style={{ background: 'var(--navy)', padding: '2rem 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.nl</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', margin: 0 }}>© 2025 Aerefund.com</p>
           <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
             <Link href="/passagiersrechten" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Passagiersrechten</Link>
             <Link href="/faq" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>FAQ</Link>

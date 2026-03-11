@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAirlineConfig } from '@/lib/airlines'
 import { formatAmount, isIntraEuRoute } from '@/lib/compensation'
+import { trackResultViewed, trackClaimStarted } from '@/lib/analytics'
 import PassengerSelector from '@/components/PassengerSelector'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
@@ -259,12 +260,27 @@ export default function UitkomstPage() {
   const { flight, compensation } = data
   const iataPrefix = flight.iataPrefix ?? ''
   const airline = getAirlineConfig(iataPrefix)
+  // Use raw flight.airline name when prefix isn't in our config (fallback shows "de airline")
+  const airlineName = airline.name === 'de airline' && flight.airline ? flight.airline : airline.name
+
+  // Track result view once
+  useEffect(() => {
+    trackResultViewed({
+      eligible:        compensation.eligible,
+      amountPerPerson: compensation.amountPerPerson,
+      airline:         airlineName,
+      iataPrefix,
+      claimType:       flight.type ?? '',
+      distanceKm:      flight.distanceKm ?? null,
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const verhaal = KLANTVERHALEN[iataPrefix] ?? {
     name: 'Laura de G.',
     quote: 'Ik had geen idee dat ik recht had op compensatie. Aerefund heeft alles voor me geregeld.',
   }
 
   function handleClaim() {
+    trackClaimStarted({ totalAmount, amountPerPerson: effectiveAmountPerPerson, passengers, airline: airlineName, iataPrefix })
     // Update passengers count in DB
     if (token) {
       fetch('/api/claim', {
@@ -294,8 +310,8 @@ export default function UitkomstPage() {
   })()
 
   function handleOverride() {
-    const override = {
-      ...data,
+    const override: ResultData = {
+      ...data!,
       compensation: {
         ...compensation, eligible: true,
         amountPerPerson: overrideAmount,
@@ -303,7 +319,7 @@ export default function UitkomstPage() {
       },
     }
     sessionStorage.setItem('vv_result', JSON.stringify(override))
-    window.location.reload()
+    setData(override)
   }
 
   if (!compensation.eligible) {
@@ -326,7 +342,7 @@ export default function UitkomstPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
-                    alt={airline.name}
+                    alt={airlineName}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     onError={(e) => {
                       const el = e.currentTarget
@@ -334,13 +350,13 @@ export default function UitkomstPage() {
                       const parent = el.parentElement!
                       parent.style.background = airline.color
                       parent.style.padding = '0'
-                      parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.75rem;color:#fff;letter-spacing:0.04em">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                      parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.75rem;color:#fff;letter-spacing:0.04em">${iataPrefix || airlineName.slice(0,2).toUpperCase()}</span>`
                     }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.25rem', fontFamily: 'var(--font-sora)' }}>
-                    {airline.name} — vlucht {flight.flightNumber}
+                    {airlineName} — vlucht {flight.flightNumber}
                   </p>
                   {flight.date && (
                     <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: '0 0 0.2rem' }}>
@@ -431,7 +447,7 @@ export default function UitkomstPage() {
     <main className="min-h-screen pb-28" style={{ background: 'var(--bg)' }}>
       <FunnelNav
         step={3}
-        flightInfo={{ number: flight.flightNumber, airline: airline.name, amount: formatAmount(totalAmount) }}
+        flightInfo={{ number: flight.flightNumber, airline: airlineName, amount: formatAmount(totalAmount) }}
       />
 
       <div className="funnel-grid">
@@ -449,18 +465,18 @@ export default function UitkomstPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
-                alt={airline.name}
+                alt={airlineName}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 onError={(e) => {
                   const el = e.currentTarget; el.style.display = 'none'
                   const p = el.parentElement!; p.style.background = airline.color; p.style.padding = '0'
-                  p.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                  p.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airlineName.slice(0,2).toUpperCase()}</span>`
                 }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.15rem', fontFamily: 'var(--font-sora)' }}>
-                {airline.name} · {flight.flightNumber}
+                {airlineName} · {flight.flightNumber}
                 {flight.date && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{' '}· {new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
               </p>
               {flight.origin && flight.destination && (
@@ -512,12 +528,12 @@ export default function UitkomstPage() {
                   lineHeight: 1.2, color: 'var(--navy)', letterSpacing: '-0.02em', margin: '0 0 0.375rem',
                 }}>
                   {flight.type === 'geannuleerd'
-                    ? <>{airline.name} annuleerde<br />jouw vlucht</>
+                    ? <>{airlineName} annuleerde<br />jouw vlucht</>
                     : flight.type === 'geweigerd'
-                    ? <>{airline.name} weigerde<br />jou de instap</>
+                    ? <>{airlineName} weigerde<br />jou de instap</>
                     : flight.type === 'downgrade'
-                    ? <>{airline.name} verlaagde<br />jouw reisklasse</>
-                    : <>{airline.name} is jou<br />compensatie verschuldigd</>
+                    ? <>{airlineName} verlaagde<br />jouw reisklasse</>
+                    : <>{airlineName} is jou<br />compensatie verschuldigd</>
                   }
                 </h1>
                 <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
@@ -585,7 +601,7 @@ export default function UitkomstPage() {
                 <path d="M8 5v3.5l2 1.5" stroke="var(--orange)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <p style={{ fontSize: '0.775rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.4 }}>
-                <strong style={{ color: 'var(--text)' }}>{airline.name} betaalt gemiddeld binnen {airline.avgPaymentWeeks} weken</strong>{' '}na indiening van de claim.
+                <strong style={{ color: 'var(--text)' }}>{airlineName} betaalt gemiddeld binnen {airline.avgPaymentWeeks} weken</strong>{' '}na indiening van de claim.
               </p>
             </div>
           </div>
@@ -617,7 +633,7 @@ export default function UitkomstPage() {
           </p>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-sub)', margin: 0, lineHeight: 1.55 }}>
             {flight.type === 'geannuleerd' || flight.type === 'geweigerd'
-              ? <>De airline is ook verplicht maaltijden, hotel en transport te vergoeden. <strong>Houd bonnetjes bij</strong> — dit is cumulatief met de compensatie.</>
+              ? <>{airlineName} is ook verplicht maaltijden, hotel en transport te vergoeden. <strong>Houd bonnetjes bij</strong> — dit is cumulatief met de compensatie.</>
               : <>Bij wachttijd ≥ 2 uur heb je recht op maaltijden en 2 telefoongesprekken. Bij overnight-vertraging ook hotel + transport. <strong>Houd bonnetjes bij.</strong></>
             }
           </p>
@@ -667,7 +683,7 @@ export default function UitkomstPage() {
       </div>{/* end main column */}
 
       <FunnelSidebar step={3} airline={{
-        name: airline.name,
+        name: airlineName,
         successRate: airline.successRate,
         avgPaymentWeeks: airline.avgPaymentWeeks,
         claimDifficulty: airline.claimDifficulty,

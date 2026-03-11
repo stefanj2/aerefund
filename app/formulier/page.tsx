@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAirlineConfig } from '@/lib/airlines'
 import { formatAmount } from '@/lib/compensation'
+import { trackFormStepComplete } from '@/lib/analytics'
 import { AIRPORTS } from '@/lib/airports'
 import FunnelNav from '@/components/FunnelNav'
 import FunnelSidebar from '@/components/FunnelSidebar'
@@ -74,6 +75,7 @@ const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
   const { flight, compensation, passengers } = session
   const iataPrefix = flight.iataPrefix ?? ''
   const airline    = getAirlineConfig(iataPrefix)
+  const airlineName = airline.name === 'de airline' && flight.airline ? flight.airline : airline.name
   const totalAmount = compensation.amountPerPerson * passengers
 
   function validateStep1() {
@@ -100,9 +102,19 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
       const errs = validateStep1()
       if (Object.keys(errs).length > 0) { setErrors(errs); return }
       setErrors({})
+      trackFormStepComplete(1)
+      // Save contact details early so abandoned-funnel email can reach the user
+      if (session?.token) {
+        fetch('/api/claim', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: session.token, first_name: firstName, last_name: lastName, email }),
+        }).catch(() => {/* non-blocking */})
+      }
       // Auto-skip medereizgers-step when traveling alone
       if (coPassengers.length === 0) { setStep(3); return }
     }
+    if (step === 2) trackFormStepComplete(2)
     if (step < 3) setStep(step + 1)
   }
 
@@ -151,7 +163,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setSubmitError('Er is iets misgegaan. Probeer het opnieuw of mail naar info@aerefund.nl.')
+        setSubmitError('Er is iets misgegaan. Probeer het opnieuw of mail naar info@aerefund.com.')
         setSubmitting(false)
         return
       }
@@ -170,7 +182,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
     <main className="min-h-screen pb-16" style={{ background: 'var(--bg)' }}>
       <FunnelNav
         step={4}
-        flightInfo={{ number: flight.flightNumber, airline: airline.name, amount: formatAmount(totalAmount) }}
+        flightInfo={{ number: flight.flightNumber, airline: airlineName, amount: formatAmount(totalAmount) }}
       />
 
       <div className="funnel-grid" style={{ paddingTop: '1.75rem' }}>
@@ -193,7 +205,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`https://www.gstatic.com/flights/airline_logos/70px/${iataPrefix || 'UN'}.png`}
-                alt={airline.name}
+                alt={airlineName}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 onError={(e) => {
                   const el = e.currentTarget
@@ -201,13 +213,13 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                   const parent = el.parentElement!
                   parent.style.background = airline.color
                   parent.style.padding = '0'
-                  parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airline.name.slice(0,2).toUpperCase()}</span>`
+                  parent.innerHTML = `<span style="font-family:var(--font-sora);font-weight:900;font-size:0.65rem;color:#fff">${iataPrefix || airlineName.slice(0,2).toUpperCase()}</span>`
                 }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--navy)', margin: '0 0 0.15rem', fontFamily: 'var(--font-sora)' }}>
-                {airline.name} · {flight.flightNumber}
+                {airlineName} · {flight.flightNumber}
                 {flight.date && (
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
                     {' '}· {new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -290,7 +302,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                 Jouw gegevens
               </h2>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                We dienen de claim in op jouw naam. Je adres hebben we nodig voor de officiële claimbrief naar {airline.name}.
+                We dienen de claim in op jouw naam. Je adres hebben we nodig voor de officiële claimbrief naar {airlineName}.
               </p>
 
               <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
@@ -514,7 +526,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                 {[
                   ['Naam',        `${firstName} ${lastName}`],
                   ['Vlucht',      flight.flightNumber],
-                  ['Airline',     airline.name],
+                  ['Airline',     airlineName],
                   ['Datum',       new Date(flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })],
                   ['Passagiers',  String(passengers)],
                 ].map(([k, v]) => (
@@ -549,7 +561,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                       <a href="/privacy" target="_blank" rel="noopener noreferrer"
                         style={{ color: 'var(--blue)', textDecoration: 'underline' }}
                         onClick={(e) => e.stopPropagation()}>privacyverklaring</a>,
-                      en geef Aerefund volmacht om namens mij een claim in te dienen bij {airline.name}.
+                      en geef Aerefund volmacht om namens mij een claim in te dienen bij {airlineName}.
                       Na indiening ontvang ik een factuur van 42 euro per e-mail,
                       en bij succesvolle uitbetaling wordt 10% commissie in rekening gebracht.
                     </>,
@@ -628,7 +640,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                   </>
                 )}
               </button>
-              <button onClick={() => setStep(2)} className="btn-secondary">← Terug</button>
+              <button onClick={() => setStep(coPassengers.length > 0 ? 2 : 1)} className="btn-secondary">← Terug</button>
             </div>
           )}
 

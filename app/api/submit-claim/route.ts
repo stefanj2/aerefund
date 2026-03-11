@@ -5,7 +5,7 @@ import { getSupabase } from '@/lib/supabase'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const FROM  = process.env.FROM_EMAIL  ?? 'onboarding@resend.dev'
-const ADMIN = process.env.ADMIN_EMAIL ?? 'info@aerefund.nl'
+const ADMIN = process.env.ADMIN_EMAIL ?? 'info@aerefund.com'
 const AEREFUND_IBAN = process.env.AEREFUND_IBAN ?? ''
 
 function formatDate(dateStr: string) {

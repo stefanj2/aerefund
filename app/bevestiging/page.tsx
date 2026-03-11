@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAirlineConfig } from '@/lib/airlines'
 import { formatAmount } from '@/lib/compensation'
+import { trackClaimSubmitted } from '@/lib/analytics'
 import FunnelNav from '@/components/FunnelNav'
 import type { FlightData } from '@/lib/types'
 
@@ -13,6 +14,7 @@ type SubmittedData = {
   passengers: number
   firstName: string
   email: string
+  token?: string
 }
 
 export default function BevestigingPage() {
@@ -24,15 +26,27 @@ export default function BevestigingPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_submitted')
     if (!raw) { router.replace('/'); return }
-    setData(JSON.parse(raw))
+    const parsed = JSON.parse(raw)
+    setData(parsed)
+    const al = getAirlineConfig(parsed.flight?.iataPrefix ?? '')
+    const alName = al.name === 'de airline' && parsed.flight?.airline ? parsed.flight.airline : al.name
+    trackClaimSubmitted({
+      token:       parsed.token ?? null,
+      totalAmount: (parsed.compensation?.amountPerPerson ?? 0) * (parsed.passengers ?? 1),
+      airline:     alName,
+      iataPrefix:  parsed.flight?.iataPrefix ?? '',
+      claimType:   parsed.flight?.type ?? '',
+      passengers:  parsed.passengers ?? 1,
+    })
   }, [router])
 
   if (!data) return null
 
-  const { flight, compensation, passengers, firstName, email } = data
+  const { flight, compensation, passengers, firstName, email, token } = data
   const airline = getAirlineConfig(flight.iataPrefix ?? '')
+  const airlineName = airline.name === 'de airline' && flight.airline ? flight.airline : airline.name
   const totalAmount = compensation.amountPerPerson * passengers
-  const referralUrl = `https://aerefund.nl/?ref=${referralCode}`
+  const referralUrl = `https://aerefund.com/?ref=${referralCode}`
 
   function copyReferral() {
     navigator.clipboard.writeText(referralUrl).then(() => {
@@ -42,10 +56,10 @@ export default function BevestigingPage() {
   }
 
   const timelineSteps = [
-    { label: 'Nu', text: 'Claim ingediend bij Aerefund.nl', active: true },
+    { label: 'Nu', text: 'Claim ingediend bij Aerefund.com', active: true },
     { label: 'Binnen 24 uur', text: `Factuur van €42 per email naar ${email}`, active: false },
-    { label: 'Week 1–2', text: `Formele claimbrief naar ${airline.name}`, active: false },
-    { label: `Week 2–${Math.max(3, airline.avgPaymentWeeks - 2)}`, text: `Onderhandeling met ${airline.name}`, active: false },
+    { label: 'Week 1–2', text: `Formele claimbrief naar ${airlineName}`, active: false },
+    { label: `Week 2–${Math.max(3, airline.avgPaymentWeeks - 2)}`, text: `Onderhandeling met ${airlineName}`, active: false },
     { label: `±${airline.avgPaymentWeeks} weken`, text: `${formatAmount(totalAmount)} op jouw rekening`, active: false },
   ]
 
@@ -96,7 +110,7 @@ export default function BevestigingPage() {
             Claim ingediend, {firstName}!
           </h1>
           <p className="text-sm leading-relaxed max-w-sm mx-auto" style={{ color: 'var(--text-sub)' }}>
-            Wij gaan voor jou aan de slag bij <strong style={{ color: 'var(--text)' }}>{airline.name}</strong>.
+            Wij gaan voor jou aan de slag bij <strong style={{ color: 'var(--text)' }}>{airlineName}</strong>.
             Je ontvangt een bevestiging op <strong style={{ color: 'var(--text)' }}>{email}</strong>.
           </p>
         </div>
@@ -115,7 +129,7 @@ export default function BevestigingPage() {
                 Factuur van €42 volgt binnen 24 uur
               </p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-sub)' }}>
-                Na betaling dienen wij de claim formeel in bij {airline.name}.
+                Na betaling dienen wij de claim formeel in bij {airlineName}.
                 Bij succes ontvangen wij ook 10% van het uitgekeerde bedrag.
               </p>
             </div>
@@ -131,7 +145,7 @@ export default function BevestigingPage() {
           <div className="flex flex-col gap-2 text-sm">
             <div className="flex justify-between">
               <span style={{ color: 'var(--text-muted)' }}>Vlucht</span>
-              <span className="font-medium">{flight.flightNumber} · {airline.name}</span>
+              <span className="font-medium">{flight.flightNumber} · {airlineName}</span>
             </div>
             <div className="flex justify-between">
               <span style={{ color: 'var(--text-muted)' }}>Passagiers</span>
@@ -143,6 +157,44 @@ export default function BevestigingPage() {
             </div>
           </div>
         </div>
+
+        {/* Claim code */}
+        {token && (
+          <div className="card mb-5 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--blue-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <rect x="2" y="5" width="14" height="10" rx="2" stroke="var(--blue)" strokeWidth="1.5" />
+                  <path d="M6 5V4a3 3 0 0 1 6 0v1" stroke="var(--blue)" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p className="font-semibold mb-1 text-sm" style={{ fontFamily: 'var(--font-sora)' }}>
+                  Jouw claimcode
+                </p>
+                <p className="text-sm mb-2" style={{ color: 'var(--text-sub)' }}>
+                  Bewaar deze code — hiermee kun je jouw claim later hervatten of de status opvragen.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <code style={{
+                    fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '1.25rem',
+                    letterSpacing: '0.12em', color: 'var(--navy)',
+                    background: 'var(--bg)', border: '1.5px solid var(--border)',
+                    padding: '0.375rem 0.875rem', borderRadius: '8px',
+                  }}>
+                    {token}
+                  </code>
+                  <a
+                    href={`/doorgaan?token=${token}`}
+                    style={{ fontSize: '0.8rem', color: 'var(--blue)', textDecoration: 'none', fontWeight: 600 }}
+                  >
+                    Claim hervatten →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Timeline */}
         <div className="card mb-5 animate-fade-in">
@@ -231,7 +283,7 @@ export default function BevestigingPage() {
               WhatsApp
             </a>
             <a
-              href={`mailto:?subject=Heb jij vluchtvertraging?&body=Check Aerefund.nl: ${referralUrl}`}
+              href={`mailto:?subject=Heb jij vluchtvertraging?&body=Check Aerefund.com: ${referralUrl}`}
               style={{
                 flex: 1, textAlign: 'center', fontSize: '0.8rem', padding: '0.625rem',
                 borderRadius: '8px', fontWeight: 700, background: 'var(--surface)',

@@ -3,7 +3,10 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 Disallow: /laden/
+Disallow: /selecteer/
+Disallow: /uitkomst/
 Disallow: /formulier/
 Disallow: /bevestiging/
+Disallow: /doorgaan/
 
 Sitemap: https://aerefund.com/sitemap.xml

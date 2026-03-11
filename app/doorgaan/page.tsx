@@ -32,7 +32,7 @@ function DoorgaanInner() {
       const claim = await res.json()
 
       if (claim.status === 'submitted') {
-        setError('Deze claim is al ingediend. Heb je vragen? Mail naar claim@aerefund.nl.')
+        setError('Deze claim is al ingediend. Heb je vragen? Mail naar claim@aerefund.com.')
         setLoading(false)
         return
       }

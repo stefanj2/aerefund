@@ -41,10 +41,11 @@ export async function POST() {
       created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
       updated_at            TIMESTAMPTZ  NOT NULL DEFAULT now()
     );
-    ALTER TABLE claims ADD COLUMN IF NOT EXISTS notes            JSONB        DEFAULT '[]'::jsonb;
-    ALTER TABLE claims ADD COLUMN IF NOT EXISTS admin_notes      TEXT;
-    ALTER TABLE claims ADD COLUMN IF NOT EXISTS invoice_number   VARCHAR(50);
-    ALTER TABLE claims ADD COLUMN IF NOT EXISTS paid_at          TIMESTAMPTZ;
+    ALTER TABLE claims ADD COLUMN IF NOT EXISTS notes                    JSONB        DEFAULT '[]'::jsonb;
+    ALTER TABLE claims ADD COLUMN IF NOT EXISTS admin_notes              TEXT;
+    ALTER TABLE claims ADD COLUMN IF NOT EXISTS invoice_number           VARCHAR(50);
+    ALTER TABLE claims ADD COLUMN IF NOT EXISTS paid_at                  TIMESTAMPTZ;
+    ALTER TABLE claims ADD COLUMN IF NOT EXISTS abandoned_email_sent_at  TIMESTAMPTZ;
     ALTER TABLE claims DISABLE ROW LEVEL SECURITY;
     CREATE INDEX IF NOT EXISTS claims_status_idx       ON claims(status);
     CREATE INDEX IF NOT EXISTS claims_token_idx        ON claims(token);
