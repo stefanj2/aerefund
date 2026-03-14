@@ -46,97 +46,104 @@ export default function HeroSearchForm() {
   return (
     <div>
       <form onSubmit={handleSubmit}>
+
+        {/* Type selector boven de luchthavens */}
+        <div style={{ marginBottom: '0.625rem' }}>
+          <p style={{
+            fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: 'var(--text-muted)',
+            marginBottom: '0.375rem', fontFamily: 'var(--font-sora)',
+          }}>
+            Wat is er mis met je vlucht?
+          </p>
+          <div style={{
+            display: 'inline-flex',
+            background: '#f0f4f8',
+            borderRadius: '10px',
+            padding: '3px',
+            gap: '2px',
+          }}>
+            {TYPE_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setType(value)}
+                style={{
+                  padding: '0.375rem 1rem',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: type === value ? '#fff' : 'transparent',
+                  color: type === value ? 'var(--navy)' : 'var(--text-muted)',
+                  fontSize: '0.8125rem',
+                  fontWeight: type === value ? 700 : 500,
+                  fontFamily: 'var(--font-sora)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                  boxShadow: type === value ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Luchthavens + knop */}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
-
-          {/* Linker kolom: luchthavens + type selector gestapeld */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-
-            {/* Rij 1: luchthavens */}
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
-              {/* Vertrek */}
-              <div
-                style={{ ...fieldBase, flex: 1 }}
-                onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
-                onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-              >
-                <AirportCombobox
-                  value={origin}
-                  onChange={setOrigin}
-                  placeholder="Vertrekluchthaven"
-                  flex="1 1 auto"
-                  contextIata={destination}
-                  icon={
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: '0.875rem' }}>
-                      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="var(--text-muted)" />
-                    </svg>
-                  }
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                  <path d="M1 4h14M11 1l4 3-4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M19 10H5M9 7l-4 3 4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Vertrek */}
+          <div
+            style={{ ...fieldBase, flex: 1 }}
+            onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+            onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+          >
+            <AirportCombobox
+              value={origin}
+              onChange={setOrigin}
+              placeholder="Vertrekluchthaven"
+              flex="1 1 auto"
+              contextIata={destination}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: '0.875rem' }}>
+                  <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16z" fill="var(--text-muted)" />
                 </svg>
-              </div>
-
-              {/* Aankomst */}
-              <div
-                style={{ ...fieldBase, flex: 1 }}
-                onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
-                onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-              >
-                <AirportCombobox
-                  value={destination}
-                  onChange={setDestination}
-                  placeholder="Aankomstluchthaven"
-                  flex="1 1 auto"
-                  contextIata={origin}
-                  icon={
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: '0.875rem' }}>
-                      <path d="M3 8v2l8 5v5.5l2 1.5 2-1.5V15l8-5V8l-8 2.5V5l2-1.5V2l-3.5 1L10 2v1.5L12 5v5.5L3 8z" fill="var(--text-muted)" />
-                    </svg>
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Rij 2: type selector — uitgelijnd met luchthaveninputs */}
-            <div style={{ display: 'flex', gap: '0.375rem' }}>
-              {TYPE_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setType(value)}
-                  style={{
-                    flex: 1,
-                    padding: '0.45rem 0',
-                    borderRadius: '8px',
-                    border: `1.5px solid ${type === value ? 'var(--orange)' : 'var(--border)'}`,
-                    background: type === value ? 'rgba(255,107,43,0.08)' : '#fff',
-                    color: type === value ? 'var(--orange)' : 'var(--text-muted)',
-                    fontSize: '0.8rem',
-                    fontWeight: type === value ? 700 : 500,
-                    fontFamily: 'var(--font-sora)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    whiteSpace: 'nowrap',
-                    textAlign: 'center',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              }
+            />
           </div>
 
-          {/* Rechter kolom: submit knop — volledige hoogte van beide rijen */}
+          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+              <path d="M1 4h14M11 1l4 3-4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M19 10H5M9 7l-4 3 4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          {/* Aankomst */}
+          <div
+            style={{ ...fieldBase, flex: 1 }}
+            onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+            onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+          >
+            <AirportCombobox
+              value={destination}
+              onChange={setDestination}
+              placeholder="Aankomstluchthaven"
+              flex="1 1 auto"
+              contextIata={origin}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: '0.875rem' }}>
+                  <path d="M3 8v2l8 5v5.5l2 1.5 2-1.5V15l8-5V8l-8 2.5V5l2-1.5V2l-3.5 1L10 2v1.5L12 5v5.5L3 8z" fill="var(--text-muted)" />
+                </svg>
+              }
+            />
+          </div>
+
+          {/* Knop */}
           <button
             type="submit"
             disabled={loading}
             style={{
               flexShrink: 0,
-              alignSelf: 'stretch',
               background: 'var(--blue)',
               color: '#fff',
               border: 'none',
