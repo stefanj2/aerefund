@@ -18,7 +18,7 @@ export default function AlgemeneVoorwaardenPage() {
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem 1.25rem 5rem' }}>
 
         <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-          Versie 1.1 — 10 maart 2026
+          Versie 1.2 — 14 maart 2026
         </p>
         <h1 style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: 'clamp(1.75rem, 4vw, 2.25rem)', color: 'var(--navy)', marginBottom: '0.5rem', lineHeight: 1.2 }}>
           Algemene Voorwaarden
@@ -33,8 +33,11 @@ export default function AlgemeneVoorwaardenPage() {
             <li><strong>Aerefund.com</strong>: de handelsnaam van GoodbyeGuru, ingeschreven bij de Kamer van Koophandel onder nummer 67332706, gevestigd te Keurenplein 24, 1069 CD Amsterdam.</li>
             <li><strong>Opdrachtgever</strong>: de natuurlijke persoon die Aerefund.com opdracht geeft tot het indienen van een vluchtclaim.</li>
             <li><strong>Claim</strong>: het verzoek tot compensatie op grond van EU-verordening EC 261/2004 bij een luchtvaartmaatschappij.</li>
-            <li><strong>Compensatie</strong>: het bedrag dat de luchtvaartmaatschappij uitkeert aan de opdrachtgever op grond van EC 261/2004.</li>
-            <li><strong>Dienst</strong>: het door Aerefund.com namens de opdrachtgever indienen en begeleiden van een vluchtclaim.</li>
+            <li><strong>Compensatie</strong>: het bedrag dat de luchtvaartmaatschappij uitkeert op grond van EC 261/2004.</li>
+            <li><strong>Cessie</strong>: de overdracht van de vordering van de opdrachtgever op de luchtvaartmaatschappij aan Aerefund.com, op grond van BW 3:94.</li>
+            <li><strong>Cedent</strong>: de opdrachtgever in diens hoedanigheid als overdrager van de vordering.</li>
+            <li><strong>Cessionaris</strong>: Aerefund.com in diens hoedanigheid als overnemer van de vordering.</li>
+            <li><strong>Dienst</strong>: het door Aerefund.com indienen en begeleiden van een vluchtclaim als cessionaris.</li>
           </ul>
         </LegalSection>
 
@@ -57,17 +60,31 @@ export default function AlgemeneVoorwaardenPage() {
           </p>
         </LegalSection>
 
-        <LegalSection title="Artikel 4 — Volmacht">
+        <LegalSection title="Artikel 4 — Vorderingsoverdracht (cessie)">
           <p>
-            Door het indienen van een claim via Aerefund.com verleent de opdrachtgever Aerefund.com een <strong>beperkte volmacht</strong> om:
+            Door het indienen van een claim via Aerefund.com draagt de opdrachtgever (cedent) zijn vordering
+            op de luchtvaartmaatschappij op grond van EU-verordening EC 261/2004 over aan Aerefund.com
+            (cessionaris). Deze overdracht (cessie) geschiedt door middel van de elektronische akte die
+            tot stand komt op het moment dat de opdrachtgever de checkbox voor akkoord aanvinkt bij het
+            indienen van de claim (art. 3:94 lid 3 BW jo. art. 6:227a lid 1 BW).
           </p>
+          <p>De cessie omvat:</p>
           <ol>
-            <li>Namens de opdrachtgever te corresponderen met de luchtvaartmaatschappij;</li>
-            <li>De claim formeel in te dienen en te begeleiden;</li>
-            <li>Betaling van compensatie te ontvangen namens de opdrachtgever, voor zover nodig voor de afwikkeling.</li>
+            <li>Het recht op compensatie op grond van EC 261/2004 voor de betreffende vlucht;</li>
+            <li>Het recht om de claim formeel in te dienen en te begeleiden bij de luchtvaartmaatschappij;</li>
+            <li>Het recht om de compensatie als eigen schuldeiser te innen bij de luchtvaartmaatschappij.</li>
           </ol>
           <p>
-            De volmacht is beperkt tot handelingen die direct verband houden met de ingediende claim en vervalt automatisch zodra de claim is afgewikkeld of door de opdrachtgever schriftelijk wordt ingetrokken. Aerefund.com is niet bevoegd namens de opdrachtgever gerechtelijke procedures te starten zonder diens uitdrukkelijke schriftelijke toestemming.
+            Aerefund.com zal de luchtvaartmaatschappij van de cessie in kennis stellen (mededeling als
+            bedoeld in art. 3:94 lid 1 BW) door middel van de claimbrief. Na ontvangst van de compensatie
+            maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 10% — het
+            nettobedrag binnen 5 werkdagen over naar het door de opdrachtgever nader op te geven IBAN.
+          </p>
+          <p>
+            De overdracht is beperkt tot de ingediende claim en vervalt automatisch zodra de claim is
+            afgewikkeld of door de opdrachtgever schriftelijk wordt ingetrokken. Aerefund.com is niet
+            bevoegd namens de opdrachtgever gerechtelijke procedures te starten zonder diens uitdrukkelijke
+            schriftelijke toestemming.
           </p>
         </LegalSection>
 
@@ -94,7 +111,10 @@ export default function AlgemeneVoorwaardenPage() {
               Bij niet-tijdige betaling van de factuur is Aerefund.com gerechtigd de dienstverlening op te schorten totdat betaling heeft plaatsgevonden.
             </li>
             <li>
-              De luchtvaartmaatschappij betaalt de compensatie in de meeste gevallen rechtstreeks aan de opdrachtgever. Aerefund.com is niet verplicht de compensatie als tussenpersoon te ontvangen of door te betalen.
+              De luchtvaartmaatschappij betaalt de compensatie rechtstreeks aan Aerefund.com. Na ontvangst maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 10% — het nettobedrag binnen <strong>5 werkdagen</strong> over naar het door de opdrachtgever nader op te geven IBAN. De opdrachtgever machtigt Aerefund.com uitdrukkelijk tot verrekening van de servicenota en commissie met de ontvangen compensatie alvorens het nettobedrag over te maken.
+            </li>
+            <li>
+              Indien de luchtvaartmaatschappij de compensatie rechtstreeks aan de opdrachtgever uitbetaalt, is de opdrachtgever gehouden de verschuldigde commissie van <strong>10% (exclusief BTW)</strong> over het ontvangen compensatiebedrag binnen <strong>14 dagen</strong> na ontvangst aan Aerefund.com te voldoen. Aerefund.com stuurt hiervoor een aparte factuur.
             </li>
           </ol>
         </LegalSection>
@@ -107,6 +127,7 @@ export default function AlgemeneVoorwaardenPage() {
             <li>Aerefund.com onmiddellijk te informeren indien de opdrachtgever zelf of via een derde een regeling treft met de luchtvaartmaatschappij;</li>
             <li>Niet gelijktijdig een identieke claim in te dienen via een andere partij of rechtstreeks bij de luchtvaartmaatschappij gedurende de looptijd van de overeenkomst.</li>
             <li>Gevraagde aanvullende informatie of documenten te verstrekken binnen de door Aerefund.com gestelde termijn (minimaal 14 dagen), indien dit noodzakelijk is voor de behandeling van de claim.</li>
+            <li>Op eerste verzoek van Aerefund.com het bankrekeningnummer (IBAN) te verstrekken waarop de netto-compensatie kan worden overgemaakt.</li>
           </ol>
           <p>
             Bij het verstrekken van onjuiste of onvolledige informatie is de opdrachtgever aansprakelijk voor de schade die Aerefund.com daardoor lijdt.

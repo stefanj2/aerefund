@@ -51,7 +51,7 @@ export default function PrivacyPage() {
             ['Naam (voor- en achternaam)', 'Identificatie voor de claimbrief'],
             ['E-mailadres', 'Communicatie, bevestiging en factuurverzending'],
             ['Telefoonnummer', 'Optioneel contactmiddel'],
-            ['Adres, postcode, woonplaats', 'Vereist voor de volmacht en claimbrief'],
+            ['Adres, postcode, woonplaats', 'Vereist voor de cessie-akte en claimbrief'],
             ['IBAN-rekeningnummer', 'Optioneel, voor uitbetaling van compensatie'],
             ['Vluchtgegevens (nummer, datum, route)', 'Kerngegevens voor de claim'],
             ['Boardingpass / boekingsbevestiging', 'Optioneel bewijsmateriaal'],

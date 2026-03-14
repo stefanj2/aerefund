@@ -13,8 +13,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }))
 
   return [
-    { url: base,                                lastModified: now, changeFrequency: 'weekly',  priority: 1.0 },
-    { url: `${base}/faq`,                       lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: base,                                        lastModified: now, changeFrequency: 'weekly',  priority: 1.0 },
+    { url: `${base}/faq`,                               lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${base}/vliegtuigmaatschappijen`,            lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/passagiersrechten`,         lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${base}/over-ons`,                  lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${base}/contact`,                   lastModified: now, changeFrequency: 'monthly', priority: 0.4 },

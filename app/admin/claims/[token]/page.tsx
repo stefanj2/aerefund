@@ -30,6 +30,7 @@ type Claim = {
   passengers: number | null
   co_passengers: CoPassenger[] | null
   boarding_pass_filename: string | null
+  id_copy_filename: string | null
   flight_data: {
     flightNumber?: string
     airline?: string
@@ -51,6 +52,21 @@ type Claim = {
   created_at: string
   submitted_at: string | null
   updated_at: string | null
+  payout_status: string | null
+  payout_amount: number | null
+  payout_net_amount: number | null
+  payout_received_at: string | null
+  payout_sent_at: string | null
+  airline_emails: AirlineEmailEntry[] | null
+}
+
+type AirlineEmailEntry = {
+  id: string
+  received_at: string
+  from: string
+  subject: string
+  body_text: string
+  source: 'manual' | 'webhook'
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -133,6 +149,196 @@ function fmtDateTime(iso?: string | null) {
   return new Date(iso).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// ── Payout ───────────────────────────────────────────────────────────────────
+
+const PAYOUT_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending:                { label: 'Wacht op uitbetaling airline', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  received_from_airline:  { label: 'Ontvangen van airline',        color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+  forwarded_to_customer:  { label: 'Doorgestort naar klant',       color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  failed:                 { label: 'Fout bij uitbetaling',         color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+}
+
+function PayoutSection({ claim, token, onSave }: { claim: Claim; token: string; onSave: () => void }) {
+  const [payoutStatus, setPayoutStatus] = useState(claim.payout_status ?? 'pending')
+  const [grossAmount, setGrossAmount] = useState(claim.payout_amount != null ? String(claim.payout_amount) : '')
+  const [netAmount, setNetAmount] = useState(claim.payout_net_amount != null ? String(claim.payout_net_amount) : '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [netOverride, setNetOverride] = useState(false)
+
+  function recalcNet(gross: string) {
+    const g = parseFloat(gross)
+    if (!isNaN(g) && g > 0) {
+      const net = Math.max(0, g - 42 - g * 0.10)
+      setNetAmount(net.toFixed(2))
+    } else {
+      setNetAmount('')
+    }
+  }
+
+  function handleGrossChange(val: string) {
+    setGrossAmount(val)
+    if (!netOverride) recalcNet(val)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    const body: Record<string, unknown> = { payout_status: payoutStatus }
+    if (grossAmount) body.payout_amount = parseFloat(grossAmount)
+    if (netAmount)   body.payout_net_amount = parseFloat(netAmount)
+    if (payoutStatus === 'received_from_airline' && claim.payout_received_at == null) {
+      body.payout_received_at = new Date().toISOString()
+    }
+    if (payoutStatus === 'forwarded_to_customer' && claim.payout_sent_at == null) {
+      body.payout_sent_at = new Date().toISOString()
+    }
+    const res = await fetch(`/api/admin/claims/${token}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    setSaving(false)
+    if (res.ok) {
+      setSaved(true)
+      onSave()
+      setTimeout(() => setSaved(false), 2500)
+    }
+  }
+
+  const cfg = PAYOUT_STATUS_CONFIG[payoutStatus] ?? PAYOUT_STATUS_CONFIG.pending
+
+  return (
+    <div style={{
+      background: '#fff', borderRadius: '12px', border: '1px solid #E5E7EB',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden',
+      marginBottom: '1rem',
+    }}>
+      <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: '#111827', fontFamily: 'var(--font-sora)' }}>
+          Uitbetaling bijhouden
+        </h3>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          padding: '0.25rem 0.625rem', borderRadius: '20px',
+          fontSize: '0.72rem', fontWeight: 700,
+          color: cfg.color, background: cfg.bg, border: `1.5px solid ${cfg.border}`,
+        }}>
+          {cfg.label}
+        </span>
+      </div>
+      <div style={{ padding: '1.125rem 1.25rem' }}>
+
+        {/* IBAN reminder */}
+        {claim.iban && (
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '0.625rem 0.875rem', marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+              <rect x="1" y="4" width="12" height="8" rx="1.5" stroke="#1D4ED8" strokeWidth="1.4" />
+              <path d="M4 4V3a3 3 0 0 1 6 0v1" stroke="#1D4ED8" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: '0.8rem', color: '#1D4ED8', fontWeight: 600, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+              {claim.iban}
+            </span>
+          </div>
+        )}
+
+        {/* Payout status */}
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+            Status uitbetaling
+          </label>
+          <select
+            value={payoutStatus}
+            onChange={e => setPayoutStatus(e.target.value)}
+            style={{
+              width: '100%', padding: '0.5625rem 0.75rem',
+              borderRadius: '8px', border: '1.5px solid #E5E7EB',
+              fontSize: '0.875rem', background: '#F9FAFB', outline: 'none', boxSizing: 'border-box', cursor: 'pointer',
+            }}
+          >
+            {Object.entries(PAYOUT_STATUS_CONFIG).map(([val, c]) => (
+              <option key={val} value={val}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Gross amount */}
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+            Bruto ontvangen van airline (€)
+          </label>
+          <input
+            type="number" step="0.01" min="0"
+            value={grossAmount}
+            onChange={e => handleGrossChange(e.target.value)}
+            placeholder="bijv. 250.00"
+            style={{
+              width: '100%', padding: '0.5625rem 0.75rem',
+              borderRadius: '8px', border: '1.5px solid #E5E7EB',
+              fontSize: '0.875rem', background: '#F9FAFB', outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {/* Net amount */}
+        <div style={{ marginBottom: '0.875rem' }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+            Netto naar klant (€){' '}
+            <span style={{ fontSize: '0.65rem', fontWeight: 400, color: '#9CA3AF' }}>
+              {netOverride ? '(handmatig)' : '(auto: bruto − €42 − 10%)'}
+            </span>
+          </label>
+          <input
+            type="number" step="0.01" min="0"
+            value={netAmount}
+            onChange={e => { setNetAmount(e.target.value); setNetOverride(true) }}
+            placeholder="bijv. 183.00"
+            style={{
+              width: '100%', padding: '0.5625rem 0.75rem',
+              borderRadius: '8px', border: `1.5px solid ${netOverride ? '#F59E0B' : '#E5E7EB'}`,
+              fontSize: '0.875rem', background: netOverride ? '#FFFBEB' : '#F9FAFB', outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          {netOverride && (
+            <button
+              onClick={() => { setNetOverride(false); recalcNet(grossAmount) }}
+              style={{ fontSize: '0.72rem', color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.25rem', padding: 0 }}
+            >
+              ↺ Herstel auto-berekening
+            </button>
+          )}
+        </div>
+
+        {/* Timestamps */}
+        {(claim.payout_received_at || claim.payout_sent_at) && (
+          <div style={{ fontSize: '0.75rem', color: '#9CA3AF', marginBottom: '0.75rem', lineHeight: 1.8 }}>
+            {claim.payout_received_at && <div>Ontvangen: {fmtDateTime(claim.payout_received_at)}</div>}
+            {claim.payout_sent_at && <div>Doorgestort: {fmtDateTime(claim.payout_sent_at)}</div>}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              flex: 1, padding: '0.625rem',
+              borderRadius: '8px', border: 'none',
+              background: saving ? '#E5E7EB' : saved ? '#059669' : '#1D4ED8',
+              color: saving ? '#9CA3AF' : '#fff',
+              fontWeight: 700, fontSize: '0.875rem',
+              cursor: saving ? 'default' : 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'var(--font-sora)',
+            }}
+          >
+            {saving ? 'Opslaan…' : saved ? '✓ Opgeslagen' : 'Opslaan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Stepper ──────────────────────────────────────────────────────────────────
 
 function StatusStepper({ currentStatus }: { currentStatus: string }) {
@@ -202,6 +408,22 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
 
+  // Claimbrief
+  const [letterSending, setLetterSending] = useState(false)
+  const [letterResult, setLetterResult] = useState<{ ok: boolean; msg: string; sentTo?: string } | null>(null)
+
+  // Resend aanvullen email
+  const [aanvullenSending, setAanvullenSending] = useState(false)
+  const [aanvullenResult, setAanvullenResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  // Airline emails — manual entry form
+  const [emailFrom, setEmailFrom] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailMsg, setEmailMsg] = useState('')
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null)
+
   const load = () => {
     setLoading(true)
     fetch(`/api/admin/claims/${token}`)
@@ -240,6 +462,80 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
       setSaveMsg('Fout bij opslaan.')
     }
     setSaving(false)
+  }
+
+  async function handleSendLetter() {
+    setLetterSending(true)
+    setLetterResult(null)
+    try {
+      const res = await fetch('/api/admin/send-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setLetterResult({ ok: true, msg: 'Claimbrief verstuurd!', sentTo: data.sentTo })
+        load()
+      } else {
+        setLetterResult({ ok: false, msg: data.error ?? 'Versturen mislukt.' })
+      }
+    } catch {
+      setLetterResult({ ok: false, msg: 'Netwerk fout bij versturen.' })
+    }
+    setLetterSending(false)
+  }
+
+  async function handleResendAanvullen() {
+    setAanvullenSending(true)
+    setAanvullenResult(null)
+    try {
+      const res = await fetch('/api/admin/resend-aanvullen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setAanvullenResult({ ok: true, msg: `Email verstuurd naar ${data.sentTo}` })
+      } else {
+        setAanvullenResult({ ok: false, msg: data.error ?? 'Versturen mislukt.' })
+      }
+    } catch {
+      setAanvullenResult({ ok: false, msg: 'Netwerk fout bij versturen.' })
+    }
+    setAanvullenSending(false)
+  }
+
+  async function handleAddEmail() {
+    if (!emailBody.trim()) return
+    setEmailSaving(true)
+    setEmailMsg('')
+    const res = await fetch(`/api/admin/claims/${token}/airline-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: emailFrom, subject: emailSubject, body_text: emailBody }),
+    })
+    if (res.ok) {
+      setEmailFrom('')
+      setEmailSubject('')
+      setEmailBody('')
+      setEmailMsg('Opgeslagen!')
+      load()
+      setTimeout(() => setEmailMsg(''), 2500)
+    } else {
+      setEmailMsg('Opslaan mislukt.')
+    }
+    setEmailSaving(false)
+  }
+
+  async function handleDeleteEmail(id: string) {
+    await fetch(`/api/admin/claims/${token}/airline-email`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    load()
   }
 
   if (loading) return (
@@ -412,14 +708,219 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
             {claim.boarding_pass_filename ? (
               <BoardingPassDownload token={token} filename={claim.boarding_pass_filename} />
             ) : (
-              <p style={{ margin: 0, fontSize: '0.875rem', color: '#9CA3AF' }}>Geen boardingpass geüpload.</p>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#9CA3AF' }}>Geen boardingpass geüpload.</p>
             )}
+            {claim.id_copy_filename ? (
+              <div style={{ marginTop: claim.boarding_pass_filename ? '0.625rem' : 0 }}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 0.375rem' }}>ID-kopie</p>
+                <IdCopyDownload token={token} filename={claim.id_copy_filename} />
+              </div>
+            ) : (
+              <p style={{ margin: claim.boarding_pass_filename ? '0.5rem 0 0' : '0', fontSize: '0.875rem', color: '#9CA3AF' }}>Geen ID-kopie geüpload.</p>
+            )}
+          </Card>
+
+          {/* Airline emails */}
+          <Card title={`Airline-reacties${(claim.airline_emails?.length ?? 0) > 0 ? ` (${claim.airline_emails!.length})` : ''}`} noPad>
+
+            {/* Received emails list */}
+            {(claim.airline_emails?.length ?? 0) === 0 ? (
+              <p style={{ margin: 0, padding: '1rem 1.25rem', fontSize: '0.8125rem', color: '#9CA3AF' }}>
+                Nog geen reacties ontvangen.
+              </p>
+            ) : (
+              <div style={{ borderBottom: '1px solid #F3F4F6' }}>
+                {[...(claim.airline_emails ?? [])].reverse().map((em, i) => (
+                  <div key={em.id} style={{
+                    padding: '0.875rem 1.25rem',
+                    borderBottom: i < (claim.airline_emails!.length - 1) ? '1px solid #F9FAFB' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          {em.source === 'webhook' ? (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', padding: '0.1rem 0.45rem' }}>
+                              auto
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '0.1rem 0.45rem' }}>
+                              handmatig
+                            </span>
+                          )}
+                          <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>{fmtDateTime(em.received_at)}</span>
+                        </div>
+                        <p style={{ margin: '0 0 0.125rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {em.from}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {em.subject}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+                        <button
+                          onClick={() => setExpandedEmailId(expandedEmailId === em.id ? null : em.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#9CA3AF', fontSize: '0.75rem', fontWeight: 600 }}
+                        >
+                          {expandedEmailId === em.id ? 'Sluiten' : 'Lezen'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEmail(em.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#FCA5A5' }}
+                          title="Verwijderen"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 3h8M5 3V2h2v1M4 3v6h4V3H4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    {expandedEmailId === em.id && (
+                      <div style={{
+                        marginTop: '0.75rem', padding: '0.75rem',
+                        background: '#F9FAFB', borderRadius: '6px',
+                        fontSize: '0.8rem', color: '#374151',
+                        whiteSpace: 'pre-wrap', lineHeight: 1.65,
+                        maxHeight: '300px', overflowY: 'auto',
+                        fontFamily: 'monospace',
+                      }}>
+                        {em.body_text}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add email form */}
+            <div style={{ padding: '1rem 1.25rem' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Reactie toevoegen
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input
+                  value={emailFrom}
+                  onChange={e => setEmailFrom(e.target.value)}
+                  placeholder="Van (e-mailadres airline)"
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', boxSizing: 'border-box',
+                    borderRadius: '8px', border: '1.5px solid #E5E7EB',
+                    fontSize: '0.8125rem', background: '#F9FAFB', outline: 'none',
+                  }}
+                />
+                <input
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  placeholder="Onderwerp"
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', boxSizing: 'border-box',
+                    borderRadius: '8px', border: '1.5px solid #E5E7EB',
+                    fontSize: '0.8125rem', background: '#F9FAFB', outline: 'none',
+                  }}
+                />
+                <textarea
+                  value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)}
+                  placeholder="Plak hier de volledige e-mailtekst van de airline…"
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', boxSizing: 'border-box',
+                    borderRadius: '8px', border: '1.5px solid #E5E7EB',
+                    fontSize: '0.8125rem', background: '#F9FAFB', outline: 'none',
+                    resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5,
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <button
+                    onClick={handleAddEmail}
+                    disabled={emailSaving || !emailBody.trim()}
+                    style={{
+                      flex: 1, padding: '0.5rem',
+                      borderRadius: '8px', border: 'none',
+                      background: emailSaving || !emailBody.trim() ? '#E5E7EB' : '#374151',
+                      color: emailSaving || !emailBody.trim() ? '#9CA3AF' : '#fff',
+                      fontWeight: 700, fontSize: '0.8125rem',
+                      cursor: emailSaving || !emailBody.trim() ? 'default' : 'pointer',
+                      fontFamily: 'var(--font-sora)',
+                    }}
+                  >
+                    {emailSaving ? 'Opslaan…' : 'Reactie opslaan'}
+                  </button>
+                  {emailMsg && (
+                    <span style={{ fontSize: '0.78rem', color: emailMsg.includes('mislukt') ? '#DC2626' : '#059669', fontWeight: 500 }}>
+                      {emailMsg}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </Card>
 
         </div>
 
         {/* RIGHT — Actions + Log */}
         <div>
+
+          {/* Claimbrief */}
+          <Card title="Claimbrief versturen">
+            <p style={{ margin: '0 0 0.875rem', fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5 }}>
+              Verstuurt een formele cessie-claimbrief (art. 3:94 BW) per e-mail naar de airline. Status wordt automatisch bijgewerkt naar &ldquo;Claim ingediend&rdquo;.
+            </p>
+            {claim.status === 'claim_filed' && !letterResult && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '8px',
+                padding: '0.625rem 0.875rem', marginBottom: '0.875rem',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                  <circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.4" />
+                  <path d="M7 4v3.5l2 1.5" stroke="#7C3AED" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{ fontSize: '0.78rem', color: '#7C3AED', fontWeight: 500 }}>
+                  Al eerder ingediend — opnieuw versturen is mogelijk.
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleSendLetter}
+              disabled={letterSending}
+              style={{
+                width: '100%', padding: '0.625rem',
+                borderRadius: '8px', border: 'none',
+                background: letterSending ? '#E5E7EB' : '#0D1B2A',
+                color: letterSending ? '#9CA3AF' : '#fff',
+                fontWeight: 700, fontSize: '0.875rem',
+                cursor: letterSending ? 'default' : 'pointer',
+                transition: 'all 0.15s',
+                fontFamily: 'var(--font-sora)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              }}
+            >
+              {!letterSending && (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1.5 2.5l11 4.5-11 4.5V9l7-2-7-2V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                </svg>
+              )}
+              {letterSending ? 'Versturen…' : 'Verstuur claimbrief'}
+            </button>
+            {letterResult && (
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '0.625rem 0.875rem',
+                borderRadius: '8px',
+                background: letterResult.ok ? '#ECFDF5' : '#FEF2F2',
+                border: `1px solid ${letterResult.ok ? '#A7F3D0' : '#FECACA'}`,
+              }}>
+                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: letterResult.ok ? '#059669' : '#DC2626' }}>
+                  {letterResult.msg}
+                </p>
+                {letterResult.sentTo && (
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6B7280' }}>
+                    Verstuurd naar: {letterResult.sentTo}
+                  </p>
+                )}
+              </div>
+            )}
+          </Card>
 
           {/* Status update */}
           <Card title="Status wijzigen">
@@ -492,9 +993,53 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
             </div>
           </Card>
 
+          {/* Payout tracking — only when won or compensation_paid */}
+          {(claim.status === 'won' || claim.status === 'compensation_paid') && (
+            <PayoutSection claim={claim} token={token} onSave={load} />
+          )}
+
           {/* Invoice number */}
           <Card title="Factuurnummer">
             <InvoiceField token={token} initial={claim.invoice_number} onSave={load} />
+          </Card>
+
+          {/* Resend aanvullen email */}
+          <Card title="Documenten herinnering">
+            <p style={{ margin: '0 0 0.875rem', fontSize: '0.8125rem', color: '#6B7280', lineHeight: 1.5 }}>
+              Stuurt opnieuw de herinnering voor IBAN, boardingpass en ID-kopie naar de klant.
+            </p>
+            <button
+              onClick={handleResendAanvullen}
+              disabled={aanvullenSending || !claim.email}
+              style={{
+                width: '100%', padding: '0.625rem',
+                borderRadius: '8px', border: 'none',
+                background: aanvullenSending || !claim.email ? '#E5E7EB' : '#374151',
+                color: aanvullenSending || !claim.email ? '#9CA3AF' : '#fff',
+                fontWeight: 700, fontSize: '0.875rem',
+                cursor: aanvullenSending || !claim.email ? 'default' : 'pointer',
+                transition: 'all 0.15s',
+                fontFamily: 'var(--font-sora)',
+              }}
+            >
+              {aanvullenSending ? 'Versturen…' : 'Herinner documenten'}
+            </button>
+            {!claim.email && (
+              <p style={{ margin: '0.375rem 0 0', fontSize: '0.75rem', color: '#DC2626' }}>
+                Geen e-mailadres bekend.
+              </p>
+            )}
+            {aanvullenResult && (
+              <div style={{
+                marginTop: '0.75rem', padding: '0.625rem 0.875rem', borderRadius: '8px',
+                background: aanvullenResult.ok ? '#ECFDF5' : '#FEF2F2',
+                border: `1px solid ${aanvullenResult.ok ? '#A7F3D0' : '#FECACA'}`,
+              }}>
+                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: aanvullenResult.ok ? '#059669' : '#DC2626' }}>
+                  {aanvullenResult.msg}
+                </p>
+              </div>
+            )}
           </Card>
 
           {/* Activity log */}
@@ -571,6 +1116,63 @@ function BoardingPassDownload({ token, filename }: { token: string; filename: st
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
         <path d="M4 2h7l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="#6B7280" strokeWidth="1.5" strokeLinejoin="round" />
         <path d="M11 2v4h4" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ fontSize: '0.875rem', color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {filename.split('/').pop() ?? filename}
+      </span>
+      {isStoragePath && (
+        <button
+          onClick={download}
+          disabled={loading}
+          style={{
+            padding: '0.375rem 0.75rem', borderRadius: '7px',
+            border: '1.5px solid #E5E7EB', background: loading ? '#F3F4F6' : '#fff',
+            fontSize: '0.8rem', fontWeight: 600, color: '#1D4ED8',
+            cursor: loading ? 'default' : 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: '0.375rem',
+          }}
+        >
+          {loading ? (
+            <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', border: '2px solid #ddd', borderTopColor: '#1D4ED8', animation: 'spin 0.7s linear infinite' }} />
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M6.5 2v6M3.5 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          )}
+          Download
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── ID copy download component ────────────────────────────────────────────────
+
+function IdCopyDownload({ token, filename }: { token: string; filename: string }) {
+  const [loading, setLoading] = useState(false)
+  const isStoragePath = filename.includes('/')
+
+  async function download() {
+    if (!isStoragePath) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/id-copy/${token}`)
+      if (res.ok) {
+        const { url } = await res.json()
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
+        <rect x="2" y="2" width="14" height="11" rx="2" stroke="#6B7280" strokeWidth="1.5" strokeLinejoin="round" />
+        <circle cx="6" cy="7" r="1.5" stroke="#6B7280" strokeWidth="1.2" />
+        <path d="M9 6h4M9 8.5h3" stroke="#6B7280" strokeWidth="1.2" strokeLinecap="round" />
       </svg>
       <span style={{ fontSize: '0.875rem', color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {filename.split('/').pop() ?? filename}

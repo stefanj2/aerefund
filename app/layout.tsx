@@ -36,13 +36,13 @@ export const metadata: Metadata = {
     locale: 'nl_NL',
     url: 'https://aerefund.com',
     siteName: 'Aerefund',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Aerefund — Vluchtcompensatie' }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Aerefund — Vluchtcompensatie' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Aerefund — Tot €600 compensatie voor jouw vertraagde vlucht',
     description: 'Controleer gratis of je recht hebt op compensatie. Wij regelen alles.',
-    images: ['/og-image.png'],
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,

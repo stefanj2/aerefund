@@ -7,11 +7,50 @@ import { AIRLINES } from '@/lib/airlines'
 import {
   IATA_TO_SLUG,
   getIataFromSlug,
-  getFlightRecords,
   getAirlineFaqs,
   getHeroPhotoUrl,
 } from '@/lib/airline-page-data'
+import { getAirlineDelays } from '@/lib/airline-delays'
 import { getReviewsForAirline } from '@/data/reviews'
+
+// Revalidate every 24 hours so delay data stays fresh
+export const revalidate = 86400
+
+// ── Wikipedia photo fetch (runs at build time for SSG) ────────────────────────
+
+async function fetchAirlineWikiPhoto(airlineName: string): Promise<string | null> {
+  // Strip legal suffixes for a cleaner search term
+  const cleanName = airlineName
+    .replace(/\s+(Airlines?|Airways?|Air Lines?|Flugdienst|Corporation|International|Nederland|UK|Hungary)\b/gi, '')
+    .trim()
+
+  const queries = [
+    `${cleanName} Boeing`,
+    `${cleanName} Airbus`,
+    `${cleanName} aircraft livery`,
+  ]
+
+  for (const q of queries) {
+    try {
+      const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(q)}&gsrlimit=8&prop=imageinfo&iiprop=url|mime|size&format=json&origin=*`
+      const res = await fetch(url, { next: { revalidate: 604800 } })
+      if (!res.ok) continue
+      const data = await res.json()
+      const pages = Object.values(
+        (data?.query?.pages ?? {}) as Record<string, { imageinfo?: { url: string; mime: string; width?: number }[] }>
+      )
+      // Pick first wide JPEG (landscape aircraft shot, not logo)
+      const photo = pages.find(p => {
+        const ii = p.imageinfo?.[0]
+        return ii?.mime === 'image/jpeg' && (ii.width ?? 0) >= 800
+      })
+      if (photo?.imageinfo?.[0]?.url) return photo.imageinfo[0].url
+    } catch {
+      continue
+    }
+  }
+  return null
+}
 
 // ── Static generation ─────────────────────────────────────────────────────────
 
@@ -164,12 +203,13 @@ export default async function AirlinePage({
   if (!iata) notFound()
 
   const cfg     = AIRLINES[iata]
-  const flights = getFlightRecords(iata)
+  const flights = await getAirlineDelays(iata)
   const faqs    = getAirlineFaqs(iata)
   const reviews = getReviewsForAirline(iata).slice(0, 2)
 
   const accentColor  = cfg.color ?? '#1a56db'
-  const heroPhotoUrl = getHeroPhotoUrl(iata)
+  const wikiPhoto    = await fetchAirlineWikiPhoto(cfg.fullName ?? cfg.name)
+  const heroPhotoUrl = wikiPhoto ?? getHeroPhotoUrl(iata)
 
   const difficultyMap = {
     easy:   { label: 'Relatief makkelijk', color: '#15803d', bg: 'rgba(21,128,61,0.09)', border: 'rgba(21,128,61,0.25)' },
@@ -209,6 +249,20 @@ export default async function AirlinePage({
 
       <SiteNav />
 
+      {/* ── Disclaimer banner ─────────────────────────────────────────────── */}
+      <div style={{
+        background: '#f0f4ff',
+        borderBottom: '1px solid #d0daf0',
+        padding: '0.6rem 1.5rem',
+        textAlign: 'center',
+        fontSize: '0.78rem',
+        color: 'var(--text-sub)',
+        lineHeight: 1.5,
+      }}>
+        <strong style={{ color: 'var(--navy)' }}>Let op:</strong>{' '}
+        Aerefund is een onafhankelijke claimorganisatie en is op geen enkele wijze gelieerd aan, gesponsord door of verbonden met {cfg.name}.
+      </div>
+
       {/* ══════════════════════════════════════════════════════════════════════
           HERO — full-width airport photo + gradient + airline airplane
       ══════════════════════════════════════════════════════════════════════ */}
@@ -236,41 +290,6 @@ export default async function AirlinePage({
           background: `linear-gradient(100deg, #fff 0%, #fff 38%, rgba(255,255,255,0.92) 50%, rgba(255,255,255,0.30) 68%, ${accentColor}22 84%, ${accentColor}44 100%)`,
         }} />
 
-        {/* Airline logo badge — top-right */}
-        <div style={{
-          position: 'absolute',
-          right: '3.5rem',
-          top: '2.5rem',
-          zIndex: 4,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.6)',
-          borderRadius: '12px',
-          padding: '0.5rem 1rem 0.5rem 0.625rem',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
-        }}
-          className="hero-logo-badge"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`https://images.kiwi.com/airlines/64/${iata}.png`}
-            alt={cfg.name}
-            width={28}
-            height={28}
-            style={{ objectFit: 'contain', borderRadius: '4px' }}
-          />
-          <div>
-            <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '0.8rem', color: 'var(--navy)', margin: 0, letterSpacing: '-0.01em' }}>
-              {cfg.name}
-            </p>
-            <p style={{ fontSize: '0.63rem', color: 'var(--text-muted)', margin: 0 }}>
-              {cfg.claimDifficulty === 'easy' ? '✓ Claim mogelijk' : cfg.claimDifficulty === 'medium' ? '⚡ Vereist expertise' : '⚠ Juridische aanpak'}
-            </p>
-          </div>
-        </div>
 
         {/* Content */}
         <div className="container-wide" style={{ position: 'relative', zIndex: 3 }}>
@@ -531,6 +550,67 @@ export default async function AirlinePage({
 
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          REPUTATION + TIPS
+      ══════════════════════════════════════════════════════════════════════ */}
+      {(cfg.reputationNote || cfg.claimTips?.length) && (
+        <section style={{ background: '#fff', padding: '5.5rem 0', borderBottom: '1px solid var(--border)' }}>
+          <div className="container-wide" style={{ maxWidth: '860px' }}>
+
+            <SectionLabel>Wat je moet weten</SectionLabel>
+            <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: 'var(--navy)', marginBottom: '2rem', letterSpacing: '-0.02em' }}>
+              {cfg.name} en EC 261: de realiteit
+            </h2>
+
+            {/* Reputation paragraph */}
+            {cfg.reputationNote && (
+              <p style={{ fontSize: '0.9375rem', color: 'var(--text-sub)', lineHeight: 1.8, marginBottom: cfg.claimTips?.length ? '2.5rem' : 0 }}>
+                {cfg.reputationNote}
+              </p>
+            )}
+
+            {/* Tips */}
+            {cfg.claimTips && cfg.claimTips.length > 0 && (
+              <div>
+                <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  3 tips om jouw {cfg.name}-claim te versterken
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                  {cfg.claimTips.map((tip, i) => {
+                    const [title, ...rest] = tip.split('. ')
+                    return (
+                      <div key={i} style={{
+                        display: 'flex', gap: '1rem', alignItems: 'flex-start',
+                        background: '#f8faff',
+                        border: '1px solid var(--border)',
+                        borderRadius: '12px',
+                        padding: '1.125rem 1.375rem',
+                      }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                          background: accentColor + '18',
+                          border: `1.5px solid ${accentColor}44`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '0.75rem',
+                          color: accentColor,
+                        }}>
+                          {i + 1}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-sub)', lineHeight: 1.7 }}>
+                          <strong style={{ color: 'var(--navy)' }}>{title}.</strong>{' '}
+                          {rest.join('. ')}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           RECENT FLIGHTS TABLE

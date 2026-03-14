@@ -73,26 +73,37 @@ export default function AdminClaimsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const load = useCallback(() => {
     setLoading(true)
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (search) params.set('search', search)
+    params.set('page', String(page))
 
     fetch(`/api/admin/claims?${params}`)
       .then(r => r.json())
-      .then(({ claims }) => setClaims(claims ?? []))
+      .then(({ claims, total: t, totalPages: tp }) => {
+        setClaims(claims ?? [])
+        setTotal(t ?? 0)
+        setTotalPages(tp ?? 1)
+      })
       .finally(() => setLoading(false))
-  }, [statusFilter, search])
+  }, [statusFilter, search, page])
 
   useEffect(() => { load() }, [load])
 
-  // Debounce search
+  // Debounce search — reset to page 1 on new search/filter
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput), 300)
+    const t = setTimeout(() => { setPage(1); setSearch(searchInput) }, 300)
     return () => clearTimeout(t)
   }, [searchInput])
+
+  // Reset to page 1 when filter changes
+  useEffect(() => { setPage(1) }, [statusFilter])
 
   return (
     <div style={{ padding: '2rem 2rem 3rem', maxWidth: '1200px' }}>
@@ -103,7 +114,7 @@ export default function AdminClaimsPage() {
           Claims
         </h1>
         <p style={{ fontSize: '0.875rem', color: '#6B7280', margin: 0 }}>
-          {loading ? 'Laden…' : `${claims.length} claim${claims.length !== 1 ? 's' : ''} gevonden`}
+          {loading ? 'Laden…' : `${total} claim${total !== 1 ? 's' : ''} gevonden`}
         </p>
       </div>
 
@@ -244,6 +255,43 @@ export default function AdminClaimsPage() {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', padding: '0 0.25rem' }}>
+          <p style={{ fontSize: '0.8125rem', color: '#9CA3AF', margin: 0 }}>
+            Pagina {page} van {totalPages} &middot; {total} claims totaal
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              style={{
+                padding: '0.5rem 0.875rem', borderRadius: '8px',
+                border: '1.5px solid #E5E7EB', background: page <= 1 ? '#F9FAFB' : '#fff',
+                fontSize: '0.8125rem', fontWeight: 600,
+                color: page <= 1 ? '#D1D5DB' : '#374151',
+                cursor: page <= 1 ? 'default' : 'pointer',
+              }}
+            >
+              ← Vorige
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              style={{
+                padding: '0.5rem 0.875rem', borderRadius: '8px',
+                border: '1.5px solid #E5E7EB', background: page >= totalPages ? '#F9FAFB' : '#fff',
+                fontSize: '0.8125rem', fontWeight: 600,
+                color: page >= totalPages ? '#D1D5DB' : '#374151',
+                cursor: page >= totalPages ? 'default' : 'pointer',
+              }}
+            >
+              Volgende →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
