@@ -46,6 +46,7 @@ export default function HeroSearchForm() {
   return (
     <div>
       <form onSubmit={handleSubmit}>
+        {/* Rij 1: luchthavens + knop */}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
           {/* Vertrek */}
           <div
@@ -94,33 +95,6 @@ export default function HeroSearchForm() {
             />
           </div>
 
-          {/* Type selector */}
-          <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
-            {TYPE_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setType(value)}
-                style={{
-                  padding: '0 0.75rem',
-                  height: '100%',
-                  borderRadius: '8px',
-                  border: `1.5px solid ${type === value ? 'var(--orange)' : 'var(--border)'}`,
-                  background: type === value ? 'rgba(255,107,43,0.08)' : '#fff',
-                  color: type === value ? 'var(--orange)' : 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                  fontWeight: type === value ? 700 : 500,
-                  fontFamily: 'var(--font-sora)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           {/* Knop */}
           <button
             type="submit"
@@ -164,6 +138,32 @@ export default function HeroSearchForm() {
               </>
             )}
           </button>
+        </div>
+
+        {/* Rij 2: type selector */}
+        <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.5rem' }}>
+          {TYPE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setType(value)}
+              style={{
+                padding: '0.4rem 0.875rem',
+                borderRadius: '8px',
+                border: `1.5px solid ${type === value ? 'var(--orange)' : 'var(--border)'}`,
+                background: type === value ? 'rgba(255,107,43,0.08)' : '#fff',
+                color: type === value ? 'var(--orange)' : 'var(--text-muted)',
+                fontSize: '0.8rem',
+                fontWeight: type === value ? 700 : 500,
+                fontFamily: 'var(--font-sora)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </form>
 
