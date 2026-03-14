@@ -57,7 +57,6 @@ async function searchDepartures(
   noStore()
   const key = process.env.AERODATABOX_KEY
   if (!key) { console.error('[route-search] AERODATABOX_KEY not set'); return [] }
-  console.log(`[route-search] searching ${origin}→${destination} on ${date}`)
 
   const slots = [
     { from: `${date}T00:00`, to: `${date}T12:00` },
