@@ -9,6 +9,8 @@ const ALL_STATUSES = [
   'rejected', 'appeal_filed', 'closed',
 ]
 
+const PAGE_SIZE = 25
+
 export async function GET(req: NextRequest) {
   const db = getSupabase()
   if (!db) return NextResponse.json({ error: 'Database niet geconfigureerd' }, { status: 503 })
@@ -16,8 +18,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const statusFilter = searchParams.get('status')
   const search = searchParams.get('search')?.toLowerCase().trim()
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
 
-  // Fetch all claims for stats, then apply filters
+  // Fetch all claims for stats, then apply filters in memory
   const { data: allClaims, error } = await db
     .from('claims')
     .select('*')
@@ -61,5 +64,12 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ claims: filtered, stats })
+  // Paginate
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const clampedPage = Math.min(page, totalPages)
+  const start = (clampedPage - 1) * PAGE_SIZE
+  const paginated = filtered.slice(start, start + PAGE_SIZE)
+
+  return NextResponse.json({ claims: paginated, stats, total, page: clampedPage, totalPages, pageSize: PAGE_SIZE })
 }
