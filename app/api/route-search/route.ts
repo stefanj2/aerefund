@@ -36,9 +36,13 @@ async function fetchSlot(url: string, key: string): Promise<unknown> {
       signal: controller.signal,
       cache: 'no-store',
     })
-    if (!r.ok) return null
+    if (!r.ok) {
+      console.error(`[route-search] fetchSlot HTTP ${r.status} for ${url.split('?')[0]}`)
+      return null
+    }
     return await r.json().catch(() => null)
-  } catch {
+  } catch (e) {
+    console.error(`[route-search] fetchSlot error:`, e)
     return null
   } finally {
     clearTimeout(timer)
@@ -52,7 +56,8 @@ async function searchDepartures(
 ): Promise<RouteFlightOption[]> {
   noStore()
   const key = process.env.AERODATABOX_KEY
-  if (!key) return []
+  if (!key) { console.error('[route-search] AERODATABOX_KEY not set'); return [] }
+  console.log(`[route-search] searching ${origin}→${destination} on ${date}`)
 
   const slots = [
     { from: `${date}T00:00`, to: `${date}T12:00` },
