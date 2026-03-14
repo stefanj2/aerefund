@@ -35,9 +35,8 @@ function AirlineLogo({ iata, name }: { iata: string; name: string }) {
   )
 }
 
-function FlightCard({ flight, onSelect, isConnecting, isSelected = false, compensation }: {
+function FlightCard({ flight, onSelect, isConnecting, isSelected = false }: {
   flight: RouteFlightOption; onSelect: () => void; isConnecting: boolean; isSelected?: boolean
-  compensation?: { eligible: boolean; amountPerPerson: number } | null
 }) {
   const [hovered, setHovered] = useState(false)
   const isDelayed = (flight.delayMinutes != null && flight.delayMinutes >= 15) || flight.status?.toLowerCase().includes('delay')
@@ -77,11 +76,6 @@ function FlightCard({ flight, onSelect, isConnecting, isSelected = false, compen
       {statusLabel && (
         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: statusColor, background: statusColor + '14', border: `1px solid ${statusColor}30`, borderRadius: '4px', padding: '0.2rem 0.5rem', flexShrink: 0 }}>{statusLabel}</span>
       )}
-      {compensation && (
-        <span style={{ fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, color: compensation.eligible ? 'var(--green)' : 'var(--text-muted)', background: compensation.eligible ? 'var(--green-dim)' : 'rgba(0,0,0,0.04)', border: `1px solid ${compensation.eligible ? 'var(--green-border)' : 'var(--border)'}`, borderRadius: '4px', padding: '0.2rem 0.5rem' }}>
-          {compensation.eligible ? `€${compensation.amountPerPerson}` : 'Geen recht'}
-        </span>
-      )}
       {isSelected ? (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
           <circle cx="10" cy="10" r="9" fill="var(--blue)" />
@@ -104,7 +98,6 @@ export default function SelecteerVluchtPage() {
 
   const [flights, setFlights] = useState<RouteFlightOption[]>([])
   const [loadState, setLoadState] = useState<LoadState>('loaded')
-  const [flightCompensations, setFlightCompensations] = useState<Record<string, { eligible: boolean; amountPerPerson: number }>>({})
   const [showManual, setShowManual] = useState(false)
   const [manualFlight, setManualFlight] = useState('')
 
@@ -135,13 +128,6 @@ export default function SelecteerVluchtPage() {
         const safe = Array.isArray(data) ? data : []
         setFlights(safe)
         setLoadState('loaded')
-        const comps: Record<string, { eligible: boolean; amountPerPerson: number }> = {}
-        safe.forEach(f => {
-          const c = calculateCompensation(f.distanceKm ?? null, f.delayMinutes ?? null, p.type, f.delayMinutes != null,
-            { origin: f.origin, destination: f.destination, cancellationNotice: p.cancellationNotice, causeType: p.causeType })
-          comps[f.flightNumber] = { eligible: c.eligible, amountPerPerson: c.amountPerPerson }
-        })
-        setFlightCompensations(comps)
       })
       .catch(() => setLoadState('error'))
   }
@@ -349,18 +335,43 @@ export default function SelecteerVluchtPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                     {flights.map(f => (
-                      <FlightCard key={f.flightNumber} flight={f} onSelect={() => selectFlight(f, false)} isConnecting={false} compensation={flightCompensations[f.flightNumber] ?? null} />
+                      <FlightCard key={f.flightNumber} flight={f} onSelect={() => selectFlight(f, false)} isConnecting={false} />
                     ))}
                   </div>
                 </>
               )}
               {loadState === 'loaded' && flights.length === 0 && (
-                <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '10px', padding: '1.5rem', textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-sub)', marginBottom: '0.5rem' }}>
-                    {params?.type === 'geannuleerd' ? 'Geannuleerde vlucht niet gevonden in de database.' : 'Geen directe vluchten gevonden op deze route en datum.'}
+                <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: '12px', padding: '1.5rem 1.25rem' }}>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text)', margin: '0 0 0.4rem', fontFamily: 'var(--font-sora)' }}>
+                    {params?.type === 'geannuleerd'
+                      ? 'Geannuleerde vlucht niet gevonden in de database'
+                      : `Geen vluchten gevonden op ${params?.date ? new Date(params.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) : 'deze datum'}`}
                   </p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {params?.type === 'geannuleerd' ? 'Dat kan kloppen — gebruik je vluchtnummer van de boekingsbevestiging hieronder.' : 'Gebruik de handmatige invoer hieronder.'}
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem', lineHeight: 1.55 }}>
+                    {params?.type === 'geannuleerd'
+                      ? 'Dat klopt vaak — geannuleerde vluchten staan niet altijd in realtime-data. Gebruik je vluchtnummer van de boekingsbevestiging.'
+                      : 'Gebruik je vluchtnummer van de boekingsbevestiging om door te gaan.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowManual(true)}
+                    className="btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.875rem', padding: '0.75rem 1rem' }}
+                  >
+                    Voer vluchtnummer handmatig in
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', margin: '0.625rem 0 0' }}>
+                    of{' '}
+                    <button
+                      type="button"
+                      onClick={() => router.push('/selecteer/details')}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.72rem', color: 'var(--blue)', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                    >
+                      probeer een andere datum
+                    </button>
                   </p>
                 </div>
               )}

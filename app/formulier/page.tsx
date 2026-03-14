@@ -49,12 +49,15 @@ export default function FormulierPage() {
   const [lastName, setLastName]       = useState('')
   const [email, setEmail]             = useState('')
   const [phone, setPhone]             = useState('')
-  const [iban, setIban]               = useState('')
-  const [address, setAddress]         = useState('')
-  const [postalCode, setPostalCode]   = useState('')
+const [postalCode, setPostalCode]   = useState('')
+  const [houseNumber, setHouseNumber] = useState('')
+  const [houseSuffix, setHouseSuffix] = useState('')
+  const [street, setStreet]           = useState('')
   const [city, setCity]               = useState('')
-  const [agreedToTerms, setAgreedToTerms]       = useState(false)
-const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
+  const [lookupState, setLookupState] = useState<'idle' | 'loading' | 'found' | 'notfound' | 'error'>('idle')
+  const [agreedToTerms, setAgreedToTerms]           = useState(false)
+  const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
+  const [showFullTerms, setShowFullTerms]           = useState(false)
   const [errors, setErrors]           = useState<Record<string, string>>({})
   const [coPassengers, setCoPassengers] = useState<CoPassenger[]>([])
   const [boardingPassFile, setBoardingPassFile] = useState<File | null>(null)
@@ -68,6 +71,22 @@ const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
     setSession(parsed)
     const count = Math.max(0, (parsed.passengers ?? 1) - 1)
     setCoPassengers(Array.from({ length: count }, () => ({ firstName: '', lastName: '', email: '' })))
+
+    // Restore form draft on back-navigation or page refresh
+    const draft = sessionStorage.getItem('vv_form_draft')
+    if (draft) {
+      try {
+        const d = JSON.parse(draft)
+        if (d.firstName)   setFirstName(d.firstName)
+        if (d.lastName)    setLastName(d.lastName)
+        if (d.email)       setEmail(d.email)
+        if (d.phone)       setPhone(d.phone)
+        if (d.postalCode)  setPostalCode(d.postalCode)
+        if (d.houseNumber) setHouseNumber(d.houseNumber)
+        if (d.houseSuffix) setHouseSuffix(d.houseSuffix)
+        if (d.street)    { setStreet(d.street); setCity(d.city ?? ''); setLookupState('found') }
+      } catch { /* ignore */ }
+    }
   }, [router])
 
   if (!session) return null
@@ -78,14 +97,44 @@ const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
   const airlineName = airline.name === 'de airline' && flight.airline ? flight.airline : airline.name
   const totalAmount = compensation.amountPerPerson * passengers
 
+  const address = street && houseNumber
+    ? `${street} ${houseNumber}${houseSuffix ? ` ${houseSuffix}` : ''}`
+    : ''
+
+  async function lookupAddress(pc: string, hn: string) {
+    const normalized = pc.replace(/\s/g, '').toUpperCase()
+    if (!/^[1-9][0-9]{3}[A-Z]{2}$/.test(normalized) || !hn.trim()) return
+    setLookupState('loading')
+    setStreet('')
+    setCity('')
+    try {
+      const res = await fetch(
+        `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(normalized + ' ' + hn)}&fq=type:adres&rows=1`
+      )
+      const data = await res.json()
+      const doc = data?.response?.docs?.[0]
+      if (doc?.straatnaam && doc?.woonplaatsnaam) {
+        setStreet(doc.straatnaam)
+        setCity(doc.woonplaatsnaam)
+        setLookupState('found')
+        setErrors(p => ({ ...p, postalCode: '', houseNumber: '', street: '', city: '' }))
+      } else {
+        setLookupState('notfound')
+      }
+    } catch {
+      setLookupState('error')
+    }
+  }
+
   function validateStep1() {
     const errs: Record<string, string> = {}
     if (!firstName.trim()) errs.firstName = 'Voornaam is verplicht'
     if (!lastName.trim())  errs.lastName  = 'Achternaam is verplicht'
     if (!email.trim() || !email.includes('@')) errs.email = 'Geldig emailadres verplicht'
     if (!phone.trim())     errs.phone     = 'Telefoonnummer is verplicht'
-    if (!address.trim())   errs.address   = 'Adres is verplicht'
     if (!postalCode.trim()) errs.postalCode = 'Postcode is verplicht'
+    if (!houseNumber.trim()) errs.houseNumber = 'Huisnummer is verplicht'
+    if (!street.trim())    errs.street    = 'Straatnaam kon niet worden opgehaald — vul handmatig in'
     if (!city.trim())      errs.city      = 'Woonplaats is verplicht'
     return errs
   }
@@ -93,7 +142,7 @@ const [agreedToWithdrawal, setAgreedToWithdrawal] = useState(false)
   function validateStep3() {
     const errs: Record<string, string> = {}
     if (!agreedToTerms)      errs.terms      = 'Verplicht'
-if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
+    if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
     return errs
   }
 
@@ -103,6 +152,11 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
       if (Object.keys(errs).length > 0) { setErrors(errs); return }
       setErrors({})
       trackFormStepComplete(1)
+      // Persist form draft so data survives back-navigation / refresh
+      sessionStorage.setItem('vv_form_draft', JSON.stringify({
+        firstName, lastName, email, phone,
+        postalCode, houseNumber, houseSuffix, street, city,
+      }))
       // Save contact details early so abandoned-funnel email can reach the user
       if (session?.token) {
         fetch('/api/claim', {
@@ -111,7 +165,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
           body: JSON.stringify({ token: session.token, first_name: firstName, last_name: lastName, email }),
         }).catch(() => {/* non-blocking */})
       }
-      // Auto-skip medereizgers-step when traveling alone
+      // Auto-skip medereizigers-step when traveling alone
       if (coPassengers.length === 0) { setStep(3); return }
     }
     if (step === 2) trackFormStepComplete(2)
@@ -123,6 +177,10 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
   }
 
   async function handleSubmit() {
+    if (!session) {
+      setSubmitError('Sessie verlopen. Ga terug naar de homepage om opnieuw te beginnen.')
+      return
+    }
     const errs = validateStep3()
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
     setSubmitting(true)
@@ -150,7 +208,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
       token: session?.token ?? null,
       flight, compensation, passengers,
       firstName, lastName, customerEmail: email,
-      phone, address, postalCode, city, iban,
+      phone, address, postalCode, city, iban: null,
       coPassengers,
       boardingPassFileName: boardingPassPath ?? (boardingPassFile?.name ?? null),
       submittedAt,
@@ -240,11 +298,13 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
             </div>
           </div>
 
-          {/* Step indicator */}
+          {/* Step indicator — sticky on mobile so user always knows where they are */}
           <div style={{
             display: 'flex', gap: '0', marginBottom: '1.75rem',
             background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
             overflow: 'hidden',
+            position: 'sticky', top: '56px', zIndex: 20,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           }}>
             {STEPS.map((s, i) => {
               const num = i + 1
@@ -313,27 +373,36 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                   <div>
                     <Label>Voornaam *</Label>
                     <input className="input-field" type="text" value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)} placeholder="Jan" />
+                      onChange={(e) => setFirstName(e.target.value)} placeholder="Jan"
+                      autoComplete="given-name" />
                     <FieldError msg={errors.firstName} />
                   </div>
                   <div>
                     <Label>Achternaam *</Label>
                     <input className="input-field" type="text" value={lastName}
-                      onChange={(e) => setLastName(e.target.value)} placeholder="de Vries" />
+                      onChange={(e) => setLastName(e.target.value)} placeholder="de Vries"
+                      autoComplete="family-name" />
                     <FieldError msg={errors.lastName} />
                   </div>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <Label>E-mailadres *</Label>
                   <input className="input-field" type="email" value={email}
-                    onChange={(e) => setEmail(e.target.value)} placeholder="jan@email.nl" />
+                    onChange={(e) => setEmail(e.target.value)} placeholder="jan@email.nl"
+                    autoComplete="email" />
                   <FieldError msg={errors.email} />
                 </div>
                 <div>
                   <Label>Telefoonnummer *</Label>
                   <input className="input-field" type="tel" value={phone}
-                    onChange={(e) => setPhone(e.target.value)} placeholder="+31 6 12345678" />
+                    onChange={(e) => setPhone(e.target.value)} placeholder="+31 6 12345678"
+                    autoComplete="tel" />
                   <FieldError msg={errors.phone} />
+                  {!errors.phone && !phone && (
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Inclusief landcode · bijv. +31 6 12345678
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -341,30 +410,91 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                 <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                   Adres
                 </p>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <Label>Straat + huisnummer *</Label>
-                  <input className="input-field" type="text" value={address}
-                    onChange={(e) => setAddress(e.target.value)} placeholder="Keizersgracht 1" />
-                  <FieldError msg={errors.address} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                {/* Postcode + huisnummer + toevoeging */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div>
                     <Label>Postcode *</Label>
                     <input className="input-field" type="text" value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value.toUpperCase())} placeholder="1234 AB" />
+                      onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
+                      onBlur={() => lookupAddress(postalCode, houseNumber)}
+                      placeholder="1234 AB" maxLength={7} autoComplete="postal-code" />
                     <FieldError msg={errors.postalCode} />
+                    {!errors.postalCode && !postalCode && (
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        Inclusief spatie · bijv. 1234 AB
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <Label>Woonplaats *</Label>
-                    <input className="input-field" type="text" value={city}
-                      onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
-                    <FieldError msg={errors.city} />
+                    <Label>Huisnummer *</Label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input className="input-field" type="text" value={houseNumber}
+                        onChange={(e) => setHouseNumber(e.target.value)}
+                        onBlur={() => lookupAddress(postalCode, houseNumber)}
+                        placeholder="1" maxLength={6} style={{ flex: '1 1 50%' }} autoComplete="address-line1" />
+                      <input className="input-field" type="text" value={houseSuffix}
+                        onChange={(e) => setHouseSuffix(e.target.value)}
+                        placeholder="Toev." maxLength={8} style={{ flex: '1 1 40%', color: 'var(--text-muted)' }} autoComplete="address-line2" />
+                    </div>
+                    <FieldError msg={errors.houseNumber} />
                   </div>
                 </div>
+
+                {/* Lookup status */}
+                {lookupState === 'loading' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.875rem', background: 'var(--blue-light)', border: '1px solid var(--blue-border)', borderRadius: '8px', marginBottom: '0.75rem' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '2px solid var(--blue)', borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8rem', color: 'var(--blue)', fontWeight: 500 }}>Adres opzoeken…</span>
+                  </div>
+                )}
+                {lookupState === 'notfound' && (
+                  <div style={{ padding: '0.625rem 0.875rem', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#c2410c', fontWeight: 500 }}>Adres niet gevonden — vul straat en woonplaats handmatig in.</span>
+                  </div>
+                )}
+                {lookupState === 'error' && (
+                  <div style={{ padding: '0.625rem 0.875rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--red)', fontWeight: 500 }}>Opzoeken mislukt — vul handmatig in.</span>
+                  </div>
+                )}
+                {lookupState === 'found' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.875rem', background: 'var(--green-dim)', border: '1px solid var(--green-border)', borderRadius: '8px', marginBottom: '0.75rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                      <circle cx="7" cy="7" r="6" fill="var(--green)" />
+                      <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--green)', fontWeight: 600 }}>{street} {houseNumber}{houseSuffix ? ` ${houseSuffix}` : ''}, {city}</span>
+                  </div>
+                )}
+
+                {/* Straat + woonplaats — alleen tonen als er inhoud is of bij fout */}
+                {(street || city || lookupState === 'notfound' || lookupState === 'error') && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <Label>Straatnaam *</Label>
+                      <input className="input-field" type="text" value={street}
+                        onChange={(e) => { setStreet(e.target.value); setLookupState('idle') }}
+                        placeholder="Keizersgracht"
+                        autoComplete="street-address"
+                        style={{ background: lookupState === 'found' ? 'var(--green-dim)' : undefined }} />
+                      <FieldError msg={errors.street} />
+                    </div>
+                    <div>
+                      <Label>Woonplaats *</Label>
+                      <input className="input-field" type="text" value={city}
+                        onChange={(e) => { setCity(e.target.value); setLookupState('idle') }}
+                        placeholder="Amsterdam"
+                        autoComplete="address-level2"
+                        style={{ background: lookupState === 'found' ? 'var(--green-dim)' : undefined }} />
+                      <FieldError msg={errors.city} />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button onClick={handleNext} className="btn-cta" style={{ marginTop: '0.5rem' }}>
-                {coPassengers.length > 0 ? 'Doorgaan naar medereizgers' : 'Doorgaan naar indienen'}
+                {coPassengers.length > 0 ? 'Doorgaan naar medereizigers' : 'Doorgaan naar indienen'}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -381,11 +511,16 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
               }}>
                 Medereizgers
               </h2>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: coPassengers.length > 0 ? '0.5rem' : '1.5rem' }}>
                 {coPassengers.length === 0
-                  ? 'Je reist alleen — geen medereizgers toe te voegen.'
+                  ? 'Je reist alleen — geen medereizigers toe te voegen.'
                   : `Vul de gegevens in van je ${coPassengers.length} medepassagier${coPassengers.length > 1 ? 's' : ''}.`}
               </p>
+              {coPassengers.length > 0 && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem', fontStyle: 'italic' }}>
+                  Gegevens niet bij de hand? Je kunt deze stap overslaan — wij nemen contact op als we ze nodig hebben.
+                </p>
+              )}
 
               {coPassengers.length === 0 ? (
                 <div className="card" style={{
@@ -405,7 +540,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                     Alleen gereisd
                   </p>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Er zijn geen medereizgers om toe te voegen.
+                    Er zijn geen medereizigers om toe te voegen.
                   </p>
                 </div>
               ) : (
@@ -462,7 +597,7 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                 Controleer en indien
               </h2>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                Upload optioneel je boardingpass — dit versterkt de claim aanzienlijk.
+                Boardingpass uploaden? Handig, maar niet vereist. Wij regelen dit zelf bij {airlineName} als dat nodig is.
               </p>
 
               {/* Boarding pass upload */}
@@ -506,19 +641,13 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                   onChange={(e) => setBoardingPassFile(e.target.files?.[0] ?? null)} />
               </div>
 
-              {/* IBAN */}
-              <div className="card" style={{ padding: '1.125rem 1.25rem', marginBottom: '1rem' }}>
-                <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  IBAN voor uitbetaling
+              {!boardingPassFile && (
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '-0.375rem 0 0.875rem 0.25rem' }}>
+                  Geen boardingpass? Geen probleem — wij vragen dit zelf op bij {airlineName} als dat nodig is.
                 </p>
-                <input className="input-field" type="text" value={iban}
-                  onChange={(e) => setIban(e.target.value.toUpperCase())} placeholder="NL00 ABCD 0123 4567 89" />
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                  Optioneel — kan ook later worden opgegeven na uitbetaling
-                </p>
-              </div>
+              )}
 
-              {/* Claim summary */}
+{/* Claim summary */}
               <div className="card" style={{ padding: '1.125rem 1.25rem', marginBottom: '1.25rem' }}>
                 <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.875rem' }}>
                   Overzicht claim
@@ -553,17 +682,33 @@ if (!agreedToWithdrawal) errs.withdrawal = 'Verplicht'
                     checked: agreedToTerms,
                     set: setAgreedToTerms,
                     err: errors.terms,
-                    text: <>Ik ga akkoord met de{' '}
-                      <a href="/algemene-voorwaarden" target="_blank" rel="noopener noreferrer"
-                        style={{ color: 'var(--blue)', textDecoration: 'underline' }}
-                        onClick={(e) => e.stopPropagation()}>algemene voorwaarden</a>{' '}
-                      en de{' '}
-                      <a href="/privacy" target="_blank" rel="noopener noreferrer"
-                        style={{ color: 'var(--blue)', textDecoration: 'underline' }}
-                        onClick={(e) => e.stopPropagation()}>privacyverklaring</a>,
-                      en geef Aerefund volmacht om namens mij een claim in te dienen bij {airlineName}.
-                      Na indiening ontvang ik een factuur van 42 euro per e-mail,
-                      en bij succesvolle uitbetaling wordt 10% commissie in rekening gebracht.
+                    text: <>
+                      Ik geef Aerefund opdracht mijn compensatieclaim in te dienen bij {airlineName} namens mij
+                      (vorderingsoverdracht). Aerefund betaalt mij de compensatie na aftrek van €42 + 10% commissie.
+                      {!showFullTerms && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setShowFullTerms(true) }}
+                          style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--blue)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                        >
+                          Toon volledige voorwaarden ↓
+                        </button>
+                      )}
+                      {showFullTerms && (
+                        <span style={{ display: 'block', marginTop: '0.4rem', color: 'var(--text-muted)', fontSize: '0.775rem', lineHeight: 1.55 }}>
+                          Ik ga akkoord met de{' '}
+                          <a href="/algemene-voorwaarden" target="_blank" rel="noopener noreferrer"
+                            style={{ color: 'var(--blue)', textDecoration: 'underline' }}
+                            onClick={(e) => e.stopPropagation()}>algemene voorwaarden</a>{' '}
+                          en de{' '}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                            style={{ color: 'var(--blue)', textDecoration: 'underline' }}
+                            onClick={(e) => e.stopPropagation()}>privacyverklaring</a>.
+                          Ik draag mijn recht op compensatie bij {airlineName} op grond van EC 261/2004 over aan
+                          Aerefund (vorderingsoverdracht). Aerefund int de compensatie als eigen schuldeiser en betaalt
+                          mij het nettobedrag na aftrek van de servicenota van €42 en 10% commissie terug.
+                        </span>
+                      )}
                     </>,
                   },
                   {

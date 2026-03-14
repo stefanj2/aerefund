@@ -4,10 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AirportCombobox from './AirportCombobox'
 
+type ClaimType = 'vertraagd' | 'geannuleerd' | 'geweigerd'
+
+const TYPE_OPTIONS: { value: ClaimType; label: string }[] = [
+  { value: 'vertraagd',   label: 'Vertraagd' },
+  { value: 'geannuleerd', label: 'Geannuleerd' },
+  { value: 'geweigerd',   label: 'Instap geweigerd' },
+]
+
 export default function HeroSearchForm() {
   const router = useRouter()
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
+  const [type, setType] = useState<ClaimType>('vertraagd')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -18,7 +27,7 @@ export default function HeroSearchForm() {
     if (!destination) { setError('Selecteer je aankomstluchthaven'); return }
     setLoading(true)
     sessionStorage.setItem('vv_route_search', JSON.stringify({
-      origin, destination, date: '', type: 'vertraagd',
+      origin, destination, date: '', type,
     }))
     router.push('/selecteer')
   }
@@ -83,6 +92,33 @@ export default function HeroSearchForm() {
                 </svg>
               }
             />
+          </div>
+
+          {/* Type selector */}
+          <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+            {TYPE_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setType(value)}
+                style={{
+                  padding: '0 0.75rem',
+                  height: '100%',
+                  borderRadius: '8px',
+                  border: `1.5px solid ${type === value ? 'var(--orange)' : 'var(--border)'}`,
+                  background: type === value ? 'rgba(255,107,43,0.08)' : '#fff',
+                  color: type === value ? 'var(--orange)' : 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontWeight: type === value ? 700 : 500,
+                  fontFamily: 'var(--font-sora)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {/* Knop */}

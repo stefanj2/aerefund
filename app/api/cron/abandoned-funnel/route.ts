@@ -126,15 +126,17 @@ export async function GET(req: NextRequest) {
   const fourHoursAgo  = new Date(Date.now() - 4  * 60 * 60 * 1000).toISOString()
   const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
-  // Find abandoned claims: result_viewed, email known, 4–48h old, not yet emailed
+  // Find abandoned claims: result_viewed OR claim_started (email filled in step 1 of form),
+  // email known, 4–48h old, not yet emailed, not submitted
   const { data: abandoned, error } = await db
     .from('claims')
     .select('token, first_name, email, flight_data, compensation, passengers')
-    .eq('status', 'result_viewed')
+    .in('status', ['result_viewed', 'claim_started'])
     .not('email', 'is', null)
     .is('abandoned_email_sent_at', null)
-    .lt('created_at', fourHoursAgo)
-    .gt('created_at', fortyEightHoursAgo)
+    .is('submitted_at', null)
+    .lt('updated_at', fourHoursAgo)
+    .gt('updated_at', fortyEightHoursAgo)
 
   if (error) {
     console.error('Abandoned funnel query error:', error)

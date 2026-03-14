@@ -72,6 +72,20 @@ export default function UitkomstPage() {
     const parsed: ResultData = JSON.parse(raw)
     setData(parsed)
 
+    // Track result view (moved here to avoid Rules-of-Hooks violation)
+    const fl = parsed.flight
+    const prefix = fl.iataPrefix ?? ''
+    const al = getAirlineConfig(prefix)
+    const alName = al.name === 'de airline' && fl.airline ? fl.airline : al.name
+    trackResultViewed({
+      eligible:        parsed.compensation.eligible,
+      amountPerPerson: parsed.compensation.amountPerPerson,
+      airline:         alName,
+      iataPrefix:      prefix,
+      claimType:       fl.type ?? '',
+      distanceKm:      fl.distanceKm ?? null,
+    })
+
     // Restore existing token or create a new claim in DB
     const existingToken = sessionStorage.getItem('vv_token')
     if (existingToken) {
@@ -263,21 +277,17 @@ export default function UitkomstPage() {
   // Use raw flight.airline name when prefix isn't in our config (fallback shows "de airline")
   const airlineName = airline.name === 'de airline' && flight.airline ? flight.airline : airline.name
 
-  // Track result view once
-  useEffect(() => {
-    trackResultViewed({
-      eligible:        compensation.eligible,
-      amountPerPerson: compensation.amountPerPerson,
-      airline:         airlineName,
-      iataPrefix,
-      claimType:       flight.type ?? '',
-      distanceKm:      flight.distanceKm ?? null,
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const verhaal = KLANTVERHALEN[iataPrefix] ?? {
     name: 'Laura de G.',
     quote: 'Ik had geen idee dat ik recht had op compensatie. Aerefund heeft alles voor me geregeld.',
   }
+
+  const daysUntilExpiry = (() => {
+    if (!flight.date) return null
+    const expiry = new Date(flight.date + 'T12:00')
+    expiry.setFullYear(expiry.getFullYear() + 3)
+    return Math.ceil((expiry.getTime() - Date.now()) / 86400000)
+  })()
 
   function handleClaim() {
     trackClaimStarted({ totalAmount, amountPerPerson: effectiveAmountPerPerson, passengers, airline: airlineName, iataPrefix })
@@ -496,6 +506,29 @@ export default function UitkomstPage() {
           </div>
         </div>
 
+        {/* Verjaringstermijn strip */}
+        {daysUntilExpiry !== null && (
+          <div className="animate-fade-up d2" style={{
+            marginBottom: '0.875rem', padding: '0.5rem 0.875rem',
+            background: daysUntilExpiry < 90 ? 'rgba(220,38,38,0.07)' : daysUntilExpiry < 365 ? 'rgba(255,107,43,0.07)' : 'var(--blue-light)',
+            border: `1px solid ${daysUntilExpiry < 90 ? 'rgba(220,38,38,0.25)' : daysUntilExpiry < 365 ? 'rgba(255,107,43,0.25)' : 'var(--blue-border)'}`,
+            borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+              <circle cx="8" cy="8" r="6.5" stroke={daysUntilExpiry < 90 ? '#dc2626' : daysUntilExpiry < 365 ? 'var(--orange)' : 'var(--blue)'} strokeWidth="1.4"/>
+              <path d="M8 5v3.5l2 1.5" stroke={daysUntilExpiry < 90 ? '#dc2626' : daysUntilExpiry < 365 ? 'var(--orange)' : 'var(--blue)'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p style={{ fontSize: '0.775rem', margin: 0, lineHeight: 1.4, color: 'var(--text-sub)' }}>
+              {daysUntilExpiry < 90
+                ? <><strong style={{ color: '#dc2626' }}>Let op: nog {daysUntilExpiry} dagen</strong> voor de verjaringstermijn — dien snel in.</>
+                : daysUntilExpiry < 365
+                ? <><strong style={{ color: 'var(--orange)' }}>{daysUntilExpiry} dagen</strong> resterend voor verjaringstermijn (3 jaar).</>
+                : <>Verjaringstermijn loopt af over <strong>{Math.floor(daysUntilExpiry / 365)} jaar en {Math.floor((daysUntilExpiry % 365) / 30)} maanden</strong>.</>
+              }
+            </p>
+          </div>
+        )}
+
         {/* ② Result — heading + amount + passengers in één kaart */}
         <div className="animate-receipt d2" style={{
           marginBottom: '1rem', borderRadius: '16px', overflow: 'hidden',
@@ -639,8 +672,61 @@ export default function UitkomstPage() {
           </p>
         </div>
 
+        {/* Fee vergelijking — alleen tonen als we goedkoper zijn dan marktgemiddelde */}
+        {effectiveAmountPerPerson > 0 && Math.round(effectiveAmountPerPerson * 0.25) - Math.round(42 + effectiveAmountPerPerson * 0.10) > 0 && (
+          <div className="animate-fade-up d3" style={{
+            marginBottom: '0.875rem', padding: '0.875rem 1rem',
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
+          }}>
+            <p style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.625rem' }}>
+              Kosten bij jouw claim
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {[
+                { name: 'Aerefund', detail: '€42 + 10%', total: Math.round(42 + effectiveAmountPerPerson * 0.10), best: true },
+                { name: 'ClaimCompass', detail: '25%', total: Math.round(effectiveAmountPerPerson * 0.25), best: false },
+                { name: 'AirHelp', detail: '35%', total: Math.round(effectiveAmountPerPerson * 0.35), best: false },
+              ].map(({ name, detail, total, best }) => (
+                <div key={name} style={{
+                  flex: 1, padding: '0.5rem 0.375rem', borderRadius: '8px', textAlign: 'center', position: 'relative',
+                  background: best ? 'var(--green-dim)' : 'var(--section-alt)',
+                  border: `1px solid ${best ? 'var(--green-border)' : 'var(--border)'}`,
+                }}>
+                  {best && (
+                    <div style={{
+                      position: 'absolute', top: '-7px', left: '50%', transform: 'translateX(-50%)',
+                      background: 'var(--green)', color: '#fff', fontSize: '0.5rem', fontWeight: 800,
+                      letterSpacing: '0.06em', padding: '1px 6px', borderRadius: '99px', whiteSpace: 'nowrap',
+                    }}>VOORDELIGST</div>
+                  )}
+                  <p style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', margin: '0.1rem 0 0.15rem', fontFamily: 'var(--font-sora)' }}>{name}</p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-sub)', margin: '0 0 0.2rem' }}>{detail}</p>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 900, color: best ? 'var(--green)' : 'var(--text)', fontFamily: 'var(--font-sora)', margin: 0 }}>€{total}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.5rem 0 0', textAlign: 'center' }}>
+              Jij bespaart {formatAmount(Math.round(effectiveAmountPerPerson * 0.25) - Math.round(42 + effectiveAmountPerPerson * 0.10))} t.o.v. de markt
+            </p>
+          </div>
+        )}
+
         {/* ④ CTA */}
-        <button onClick={handleClaim} className="btn-cta animate-fade-up d3" style={{ marginBottom: '0.625rem' }}>
+        {daysUntilExpiry !== null && daysUntilExpiry < 365 && (
+          <div className="animate-fade-up d3" style={{
+            display: 'flex', alignItems: 'center', gap: '0.375rem', justifyContent: 'center',
+            marginBottom: '0.5rem',
+          }}>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+              <circle cx="8" cy="8" r="6.5" stroke={daysUntilExpiry < 90 ? '#dc2626' : 'var(--orange)'} strokeWidth="1.4"/>
+              <path d="M8 5v3.5l2 1.5" stroke={daysUntilExpiry < 90 ? '#dc2626' : 'var(--orange)'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontSize: '0.72rem', color: daysUntilExpiry < 90 ? '#dc2626' : 'var(--orange)', fontWeight: 600 }}>
+              {daysUntilExpiry} dagen resterend — dien nu in
+            </span>
+          </div>
+        )}
+        <button onClick={handleClaim} className="btn-cta animate-fade-up d3" style={{ marginBottom: '0.375rem' }}>
           Claim mijn {formatAmount(totalAmount)}
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -649,12 +735,12 @@ export default function UitkomstPage() {
 
         {/* ⑤ Trust + token */}
         <div className="animate-fade-up d4" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {/* Social proof */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem' }}>
+          {/* Social proof + fee disclaimer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
             {[
               { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1l1.5 3 3.5.5-2.5 2.5.6 3.5L6 9l-3.1 1.5.6-3.5L1 4.5l3.5-.5L6 1z" fill="var(--blue)" /></svg>, label: '4.8/5 beoordeling' },
               { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--green)" strokeWidth="1.3"/><path d="M3.5 6l2 2 3-3" stroke="var(--green)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, label: '1.400+ claims' },
-              { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--blue)" strokeWidth="1.3"/><path d="M6 3.5v2.5l1.5 1" stroke="var(--blue)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, label: 'Gratis · 2 min' },
+              { icon: <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--blue)" strokeWidth="1.3"/><path d="M6 3.5v2.5l1.5 1" stroke="var(--blue)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, label: 'Geen betaling nu · €42 pas na indiening' },
             ].map((item) => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 {item.icon}{item.label}
