@@ -31,8 +31,7 @@ async function fetchSlot(url: string, key: string): Promise<unknown> {
     const r = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
-        'x-rapidapi-key': key,
+        'x-api-market-key': key,
       },
       signal: controller.signal,
       cache: 'no-store',
@@ -67,8 +66,9 @@ async function searchDepartures(
     if (!firstSlot) await new Promise(r => setTimeout(r, 1200)) // respect 1 req/sec rate limit
     firstSlot = false
 
+    const baseUrl = process.env.AERODATABOX_BASE_URL ?? 'https://prod.api.market/api/v1/aedbx/aerodatabox'
     const url =
-      `https://aerodatabox.p.rapidapi.com/flights/airports/iata/${origin}/${from}/${to}` +
+      `${baseUrl}/flights/airports/iata/${origin}/${from}/${to}` +
       `?withLeg=false&withCancelled=false&withCodeshared=true&withCargo=false&withPrivate=false&withLocation=false`
 
     const json = await fetchSlot(url, key)

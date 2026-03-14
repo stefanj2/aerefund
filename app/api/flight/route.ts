@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { haversineDistance } from '@/lib/airports'
 import { getAirlinePrefixFromFlightNumber, getAirlineConfig } from '@/lib/airlines'
+import { storePublicDelay } from '@/lib/airline-delays'
 import type { FlightData } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -65,20 +66,26 @@ export async function GET(req: NextRequest) {
 
   const prefix = getAirlinePrefixFromFlightNumber(flightNumber)
 
-  // Try AeroDataBox first (best historical coverage, via RapidAPI)
+  // Try AeroDataBox first (best historical coverage, via API.Market)
   const aeroResult = await tryAeroDataBox(flightNumber, date, type, prefix)
-  if (aeroResult) return NextResponse.json(aeroResult)
+  if (aeroResult) {
+    storePublicDelay(aeroResult) // fire-and-forget — never blocks response
+    return NextResponse.json(aeroResult)
+  }
 
   // Try AviationStack
   const avResult = await tryAviationStack(flightNumber, date, type, prefix)
-  if (avResult) return NextResponse.json(avResult)
+  if (avResult) {
+    storePublicDelay(avResult)
+    return NextResponse.json(avResult)
+  }
 
   // Fallback: airline info from prefix only
   return NextResponse.json(buildFallback(flightNumber, date, type, prefix))
 }
 
 // ---------------------------------------------------------------------------
-// AeroDataBox (via RapidAPI) — endpoint: /flights/number/{flight}/{date}
+// AeroDataBox (via API.Market) — endpoint: /flights/number/{flight}/{date}
 // Response docs: https://doc.aerodatabox.com/#tag/Flight-API
 // ---------------------------------------------------------------------------
 async function tryAeroDataBox(
@@ -88,15 +95,15 @@ async function tryAeroDataBox(
   prefix: string
 ): Promise<FlightData | null> {
   const key = process.env.AERODATABOX_KEY
+  const baseUrl = process.env.AERODATABOX_BASE_URL ?? 'https://prod.api.market/api/v1/aedbx/aerodatabox'
   if (!key) return null
 
   try {
     const res = await fetch(
-      `https://aerodatabox.p.rapidapi.com/flights/number/${flightNumber}/${date}`,
+      `${baseUrl}/flights/number/${flightNumber}/${date}`,
       {
         headers: {
-          'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
-          'x-rapidapi-key': key,
+          'x-api-market-key': key,
         },
         next: { revalidate: 0 },
       }
