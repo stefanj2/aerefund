@@ -43,6 +43,11 @@ export default function BevestigingPage() {
         currency: 'EUR',
         value: totalCompensation,
       })
+      ;(window as any).gtag('event', 'conversion', {
+        send_to: 'AW-18008759628/wPSZCN6frIocEMy6n4tD',
+        value: 42,
+        currency: 'EUR',
+      })
     }
     if (typeof window !== 'undefined' && (window as any).fbq) {
       ;(window as any).fbq('track', 'Lead', {
