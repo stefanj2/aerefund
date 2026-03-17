@@ -353,7 +353,7 @@ export default function Home() {
               <strong style={{ color: 'var(--blue)' }}>Aerefund.</strong>{' '}
               <strong style={{ color: 'var(--text)' }}>Compensatie</strong>{' '}
               <span style={{ color: 'var(--text-sub)' }}>voor</span>{' '}
-              <strong style={{ color: 'var(--text)' }}>Vluchtvertraging</strong>
+              <strong style={{ color: 'var(--text)' }}>Vluchtvertraging & Annulering</strong>
             </p>
 
             {/* H1 */}
