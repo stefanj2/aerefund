@@ -47,6 +47,16 @@ const DEMO_FLIGHTS: Record<string, Omit<FlightData, 'flightNumber' | 'date' | 't
     actualArrival:      '2024-09-05T16:30:00Z',
     delayMinutes: 240, distanceKm: 5857, found: true,
   },
+  // KLM AMS→BCN — geannuleerd (dag zelf, no_notice) → €250 per person (1849 km)
+  'KL1709': {
+    airline: 'KLM Royal Dutch Airlines', iataPrefix: 'KL',
+    origin: 'AMS', destination: 'BCN',
+    scheduledDeparture: '2024-06-15T08:30:00Z',
+    scheduledArrival:   '2024-06-15T11:00:00Z',
+    actualArrival:      null,
+    delayMinutes:       null,
+    distanceKm: 1849, found: true,
+  },
 }
 
 export async function GET(req: NextRequest) {
