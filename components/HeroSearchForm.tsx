@@ -12,11 +12,11 @@ const TYPE_OPTIONS: { value: ClaimType; label: string }[] = [
   { value: 'geweigerd',   label: 'Instap geweigerd' },
 ]
 
-export default function HeroSearchForm() {
+export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultType?: ClaimType }) {
   const router = useRouter()
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
-  const [type, setType] = useState<ClaimType>('vertraagd')
+  const [type, setType] = useState<ClaimType>(defaultType)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

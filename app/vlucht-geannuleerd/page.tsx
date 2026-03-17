@@ -337,7 +337,7 @@ export default function VluchtGeannuleerdPage() {
             </p>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <HeroSearchForm />
+              <HeroSearchForm defaultType="geannuleerd" />
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.5rem' }}>
