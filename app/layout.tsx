@@ -68,6 +68,7 @@ export default function RootLayout({
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', 'G-1VBKEHCXN5');
+          gtag('config', 'AW-18008759628');
         `}</Script>
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
           <>
