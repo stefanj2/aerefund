@@ -10,7 +10,12 @@ import type { FlightData } from '@/lib/types'
 
 
 // EC 261: first leg with delay is the responsible carrier (first-carrier principle)
-function findResponsibleLeg(legs: FlightData[]): FlightData {
+function findResponsibleLeg(legs: FlightData[], claimType?: string): FlightData {
+  // For cancellations, the cancelled leg (delayMinutes === null) is responsible
+  if (claimType === 'geannuleerd') {
+    const cancelledLeg = legs.find(l => l.delayMinutes === null)
+    if (cancelledLeg) return cancelledLeg
+  }
   return legs.find(l => (l.delayMinutes ?? 0) > 0) ?? legs[0]
 }
 
@@ -93,7 +98,7 @@ export default function LoadingScreen() {
     const apiPromise: Promise<FlightData | null> = (() => {
       // New: prefetchedFlights array (N legs from multi-stopover route-search)
       if (Array.isArray(parsed.prefetchedFlights) && parsed.prefetchedFlights.length > 0) {
-        return Promise.resolve(findResponsibleLeg(parsed.prefetchedFlights as FlightData[]))
+        return Promise.resolve(findResponsibleLeg(parsed.prefetchedFlights as FlightData[], parsed.type))
       }
 
       // New: flightNumbers array with length > 1 (N legs, no prefetch — fetch via API)
@@ -104,7 +109,7 @@ export default function LoadingScreen() {
           )
         ).then(legs => {
           const valid = legs.filter(Boolean) as FlightData[]
-          return valid.length > 0 ? findResponsibleLeg(valid) : null
+          return valid.length > 0 ? findResponsibleLeg(valid, parsed.type) : null
         })
       }
 
@@ -122,7 +127,7 @@ export default function LoadingScreen() {
           if (!leg1 && !leg2) return null
           if (!leg1) return leg2
           if (!leg2) return leg1
-          return findResponsibleLeg([leg1, leg2])
+          return findResponsibleLeg([leg1, leg2], parsed.type)
         })
       }
 

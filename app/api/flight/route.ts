@@ -205,15 +205,19 @@ async function tryAviationStack(
       origin && destination ? haversineDistance(origin, destination) : null
 
     const scheduledArr: string | null = flight.arrival?.scheduled ?? null
-    const actualArr: string | null = flight.arrival?.actual ?? null
+    const actualArrRaw: string | null = flight.arrival?.actual ?? null
     let delayMinutes: number | null = null
-    if (scheduledArr && actualArr) {
+    if (scheduledArr && actualArrRaw) {
       delayMinutes = Math.round(
-        (new Date(actualArr).getTime() - new Date(scheduledArr).getTime()) / 60000
+        (new Date(actualArrRaw).getTime() - new Date(scheduledArr).getTime()) / 60000
       )
     } else if (typeof flight.arrival?.delay === 'number') {
       delayMinutes = flight.arrival.delay
     }
+
+    const isCancelled =
+      (flight.flight_status ?? '').toLowerCase().includes('cancel') ||
+      type === 'geannuleerd'
 
     return {
       flightNumber,
@@ -225,8 +229,8 @@ async function tryAviationStack(
       destination,
       scheduledDeparture: flight.departure?.scheduled ?? null,
       scheduledArrival: scheduledArr,
-      actualArrival: actualArr,
-      delayMinutes,
+      actualArrival: isCancelled ? null : actualArrRaw,
+      delayMinutes: isCancelled ? null : delayMinutes,
       distanceKm,
       found: true,
     }
