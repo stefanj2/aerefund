@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { getSupabase } from '@/lib/supabase'
+import { getSupabase, generateToken } from '@/lib/supabase'
 import { getAirlineConfig } from '@/lib/airlines'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -657,7 +657,7 @@ export async function POST(req: NextRequest) {
       })
     } else if (db) {
       db.from('claims').insert({
-        token: crypto.randomUUID().replace(/-/g, '').substring(0, 7).toUpperCase(),
+        token: generateToken(),
         status: 'submitted',
         flight_data: body.flight,
         compensation: body.compensation,

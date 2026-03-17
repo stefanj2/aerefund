@@ -28,7 +28,7 @@ export default function SelecteerDetailsPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_route_search')
-    if (!raw) { router.replace('/selecteer/type'); return }
+    if (!raw) { router.replace('/'); return }
     const p = JSON.parse(raw) as RouteSearchParams
     if (!p.type) { router.replace('/selecteer/type'); return }
     setParams(p)

@@ -112,7 +112,7 @@ export default function SelecteerVluchtPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_route_search')
-    if (!raw) { router.replace('/selecteer/type'); return }
+    if (!raw) { router.replace('/'); return }
     const p = JSON.parse(raw) as RouteSearchParams
     if (!p.type || !p.stopover) { router.replace('/selecteer/details'); return }
     setParams(p)

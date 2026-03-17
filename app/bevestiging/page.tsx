@@ -37,6 +37,19 @@ export default function BevestigingPage() {
       claimType:   parsed.flight?.type ?? '',
       passengers:  parsed.passengers ?? 1,
     })
+    const totalCompensation = (parsed.compensation?.amountPerPerson ?? 0) * (parsed.passengers ?? 1)
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      ;(window as any).gtag('event', 'generate_lead', {
+        currency: 'EUR',
+        value: totalCompensation,
+      })
+    }
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      ;(window as any).fbq('track', 'Lead', {
+        currency: 'EUR',
+        value: totalCompensation,
+      })
+    }
   }, [router])
 
   if (!data) return null

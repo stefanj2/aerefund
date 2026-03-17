@@ -85,6 +85,13 @@ export default function UitkomstPage() {
       claimType:       fl.type ?? '',
       distanceKm:      fl.distanceKm ?? null,
     })
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      ;(window as any).fbq('track', 'ViewContent', {
+        currency: 'EUR',
+        value: parsed.compensation.amountPerPerson ?? 0,
+        content_name: fl.flightNumber ?? '',
+      })
+    }
 
     // Restore existing token or create a new claim in DB
     const existingToken = sessionStorage.getItem('vv_token')

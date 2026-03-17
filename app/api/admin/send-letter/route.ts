@@ -42,7 +42,7 @@ function buildClaimbrief(claim: Record<string, unknown>) {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  const aerefundIban = process.env.NEXT_PUBLIC_AEREFUND_IBAN ?? '[IBAN AEREFUND]'
+  const aerefundIban = process.env.AEREFUND_IBAN ?? '[IBAN AEREFUND]'
 
   const subject = `Claimbrief EC 261/2004 — Vlucht ${flightNumber} d.d. ${flightDate} — Ref: ${token}`
 
@@ -50,7 +50,7 @@ function buildClaimbrief(claim: Record<string, unknown>) {
     'AEREFUND.NL / GOODBYEGURU BV',
     'Keurenplein 24, 1069 CD Amsterdam',
     'KvK: 67332706',
-    'claim@aerefund.nl',
+    'claim@aerefund.com',
     '',
     `Datum: ${claimDate}`,
     `Referentie: ${token}`,
@@ -89,7 +89,7 @@ function buildClaimbrief(claim: Record<string, unknown>) {
     'Met vriendelijke groet,',
     '',
     'Aerefund.nl — GoodbyeGuru BV',
-    'claim@aerefund.nl',
+    'claim@aerefund.com',
   ].join('\n')
 
   const html = `<!DOCTYPE html>
@@ -118,7 +118,7 @@ function buildClaimbrief(claim: Record<string, unknown>) {
 
 <div class="header">
   <div class="logo">Aere<span>fund</span>.nl</div>
-  <div class="meta">GoodbyeGuru BV &bull; Keurenplein 24, 1069 CD Amsterdam &bull; KvK 67332706 &bull; claim@aerefund.nl</div>
+  <div class="meta">GoodbyeGuru BV &bull; Keurenplein 24, 1069 CD Amsterdam &bull; KvK 67332706 &bull; claim@aerefund.com</div>
 </div>
 
 <p>
@@ -170,7 +170,7 @@ function buildClaimbrief(claim: Record<string, unknown>) {
 <p>Bij niet-tijdige betaling behouden wij ons het recht voor verdere (juridische) stappen te ondernemen, waaronder inschakeling van de toezichthouder (ILT) en/of gerechtelijke incasso.</p>
 
 <p>Met vriendelijke groet,</p>
-<p><strong>Aerefund.nl &mdash; GoodbyeGuru BV</strong><br>claim@aerefund.nl</p>
+<p><strong>Aerefund.nl &mdash; GoodbyeGuru BV</strong><br>claim@aerefund.com</p>
 
 <div class="footer">
   Dit bericht is verzonden namens de cedent na vorderingsoverdracht conform art. 3:94 BW.
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
     const { error: sendErr } = await resend.emails.send({
       from:    FROM,
       to:      toEmail,
-      cc:      'claim@aerefund.nl',
+      cc:      'claim@aerefund.com',
       replyTo: `claim+${(claim.token as string).toUpperCase()}@aerefund.com`,
       subject,
       html,
