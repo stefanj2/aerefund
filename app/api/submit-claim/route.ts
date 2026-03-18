@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
 import { getSupabase, generateToken } from '@/lib/supabase'
 import { getAirlineConfig } from '@/lib/airlines'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+import { resend } from '@/lib/resend'
 
 const FROM  = process.env.FROM_EMAIL  ?? 'onboarding@resend.dev'
 const ADMIN = process.env.ADMIN_EMAIL ?? 'info@aerefund.com'
