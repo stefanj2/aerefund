@@ -483,7 +483,7 @@ Wel:  "We vechten voor jou. In 85% van de gevallen winnen we."
 **Transparant over kosten**
 ```
 Niet: "Lage kosten" (vaag)
-Wel:  "€42 nu. 10% als we winnen. Niets meer."
+Wel:  "€42 nu. 25% als we winnen. Niets meer."
 ```
 
 ### Schrijfregels

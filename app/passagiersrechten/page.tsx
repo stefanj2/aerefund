@@ -457,7 +457,7 @@ export default function PassagiersrechtenPage() {
             </svg>
           </Link>
           <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginTop: '1.25rem' }}>
-            €42 bij indiening · 10% commissie bij succes · geen win, geen kosten
+            €42 bij indiening · 25% commissie bij succes · geen win, geen kosten
           </p>
         </div>
       </section>

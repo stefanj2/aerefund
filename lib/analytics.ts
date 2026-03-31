@@ -15,14 +15,24 @@ export function trackEvent(eventName: string, params?: EventParams) {
   }
 }
 
+function trackFunnelEvent(event: string, payload: Record<string, unknown>) {
+  fetch('/api/track-funnel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, ...payload }),
+  }).catch(() => {})
+}
+
 // ── Funnel events ──────────────────────────────────────────────────────────
 
 export function trackFunnelStart(claimType: string) {
   trackEvent('funnel_start', { claim_type: claimType })
+  trackFunnelEvent('funnel_start', { claim_type: claimType })
 }
 
 export function trackTypeSelected(claimType: string) {
   trackEvent('type_selected', { claim_type: claimType })
+  trackFunnelEvent('type_selected', { claim_type: claimType })
 }
 
 export function trackDetailsComplete(params: {
@@ -35,6 +45,7 @@ export function trackDetailsComplete(params: {
     has_stopover: params.hasStopover,
     flight_date:  params.date,
   })
+  trackFunnelEvent('details_complete', { claim_type: params.claimType })
 }
 
 export function trackFlightSelected(params: {
@@ -50,6 +61,11 @@ export function trackFlightSelected(params: {
     iata_prefix:   params.iataPrefix,
     claim_type:    params.claimType,
     is_manual:     params.isManual,
+  })
+  trackFunnelEvent('flight_selected', {
+    claim_type:  params.claimType,
+    iata_prefix: params.iataPrefix,
+    is_manual:   params.isManual,
   })
 }
 
@@ -68,6 +84,11 @@ export function trackResultViewed(params: {
     claim_type:        params.claimType,
     distance_km:       params.distanceKm,
   })
+  trackFunnelEvent(params.eligible ? 'result_eligible' : 'result_ineligible', {
+    claim_type:        params.claimType,
+    iata_prefix:       params.iataPrefix,
+    amount_per_person: params.amountPerPerson,
+  })
 }
 
 export function trackClaimStarted(params: {
@@ -83,6 +104,10 @@ export function trackClaimStarted(params: {
     passengers:        params.passengers,
     airline:           params.airline,
     iata_prefix:       params.iataPrefix,
+  })
+  trackFunnelEvent('claim_started', {
+    iata_prefix:       params.iataPrefix,
+    amount_per_person: params.amountPerPerson,
   })
 }
 

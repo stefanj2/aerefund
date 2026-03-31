@@ -44,7 +44,7 @@ VERKEER
                │
                ▼
 ┌─────────────────────────────┐
-│  GEWONNEN → 10% COMMISSIE   │  ← Blije klant = reviews + referrals
+│  GEWONNEN → 25% COMMISSIE   │  ← Blije klant = reviews + referrals
 └─────────────────────────────┘
 ```
 
@@ -137,7 +137,7 @@ Dit is de **belangrijkste pagina van je hele website**. Hier beslist de klant.
 │   ┌──────────────────────────────────────────────────────┐   │
 │   │  Wat kost het jou?                                   │   │
 │   │  • €42 eenmalige administratiekosten                 │   │
-│   │  • 10% commissie (€80) — alleen bij succes           │   │
+│   │  • 25% commissie (€200) — alleen bij succes           │   │
 │   │  • Jij ontvangt netto: minimaal €678                 │   │
 │   └──────────────────────────────────────────────────────┘   │
 │                                                              │
@@ -717,7 +717,7 @@ Dit is het cruciale onderscheid. Je verkoopt geen €42 service aan een koude do
 
 ```
 Slechte offer (te vroeg):
-"Dien jouw vluchtclaim in voor €42 + 10% commissie"
+"Dien jouw vluchtclaim in voor €42 + 25% commissie"
 → Vraagt commitment van iemand die jou niet kent
 
 Goede offer (lage drempel):
@@ -762,7 +762,7 @@ Elke persoon die ooit meer dan 3 uur heeft gewacht op een vliegveld kent het gev
 | "Het lijkt ingewikkeld" | Wij regelen alles — jij hoeft niets te doen |
 | "De airline reageert toch niet" | Wij onderhandelen en schakelen ILT in indien nodig |
 | "Ik vertrouw claimbureaus niet" | Eerst checken, pas daarna beslissen — geen verplichtingen |
-| "Het kost me meer dan het oplevert" | €42 admin + 10% commissie — transparante opbouw |
+| "Het kost me meer dan het oplevert" | €42 admin + 25% commissie — transparante opbouw |
 
 ---
 
@@ -957,7 +957,7 @@ Dit zijn de 5 bezwaren die mensen tegenhouden, en hoe je ze in de advertentie é
 ✓ Resultaat in 60 seconden
 ✓ Wij regelen alles — jij hoeft niets te doen
 ✓ Geen succes? Geen extra kosten
-✓ Transparante vaste fee: €42 + 10%
+✓ Transparante vaste fee: €42 + 25%
 ```
 
 ---
@@ -1411,7 +1411,7 @@ Ze vertellen dit niet, omdat 97% van de gedupeerde reizigers nooit claimt.
 Ze rekenen op jouw onwetendheid. Dat is letterlijk in hun financieel
 model verwerkt.
 
-Wij halen het voor jou op. Voor €42 + 10% als we winnen.
+Wij halen het voor jou op. Voor €42 + 25% als we winnen.
 
 Check gratis in 60 seconden:
 👉 aerefund.nl/gratis-check
@@ -1554,7 +1554,7 @@ Below the badge, in small light-gray monospace-style text:
 Below that text, a horizontal separator line in #1f3148.
 Below that, a large orange rounded button (#FF6B2B), full width,
 white bold text: "Dien mijn claim in →"
-Below the button, tiny muted text: "€42 · 10% bij succes · geen verplichtingen"
+Below the button, tiny muted text: "€42 · 25% bij succes · geen verplichtingen"
 
 The man's expression is not visible — we only see hands and phone.
 This is intentional. The viewer projects themselves into the hands.

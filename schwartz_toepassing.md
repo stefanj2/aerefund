@@ -65,7 +65,7 @@ Schwartz beschrijft 5 stadia van bewustzijn. Voor elk stadium is een andere head
 STADIUM 1 — Meest bewust
   Kent ons product, wil het, heeft het nog niet gekocht
   Aanpak: Naam + prijs. Werkt voor retargeting van al-bezoekers.
-  Headline: "Doe jouw claim nog vandaag — €42 + 10%"
+  Headline: "Doe jouw claim nog vandaag — €42 + 25%"
 
 STADIUM 2 — Kent het product maar wil het nog niet
   Weet dat claimservices bestaan, twijfelt of het werkt
@@ -179,7 +179,7 @@ We verkopen **nooit** "een claimbriefservice." We verkopen altijd:
 | "Claimbrief verstuurd naar KLM" | "KLM staat nu onder druk om te betalen" |
 | "Onze experts verwerken jouw dossier" | "Terwijl jij achteroverleunt, vechten wij voor jou" |
 | "Administratiekosten: €42" | "Voor minder dan een etentje regelen wij de rest" |
-| "10% commissie bij succes" | "Wij winnen pas mee als jij wint" |
+| "25% commissie bij succes" | "Wij winnen pas mee als jij wint" |
 
 ---
 
@@ -464,7 +464,7 @@ Het mechanisme maakt de belofte geloofwaardig. "Wij checken gratis" is een belof
 
 We proberen nu te veel te zeggen tegelijk:
 - Gratis check
-- €42 + 10%
+- €42 + 25%
 - Wij doen alles
 - Snel resultaat
 - Geen risico
@@ -474,7 +474,7 @@ We proberen nu te veel te zeggen tegelijk:
 De kern voor VluchtVertraagd.nl is:
 > **"Wij halen op wat jou toekomt — terwijl jij niets hoeft te doen."**
 
-Alles — de gratis analyse, de €42, de 10%, het dashboard — is slechts documentatie van deze ene belofte.
+Alles — de gratis analyse, de €42, de 25%, het dashboard — is slechts documentatie van deze ene belofte.
 
 **Herschreven Hero-sectie:**
 
@@ -632,7 +632,7 @@ Check gratis of jij recht hebt op compensatie. 60 seconden.
 ║  ╚══════════════════════════════════╝                        ║
 ║                                                              ║
 ║  Wij halen dat op voor jou.                                  ║
-║  Kosten: €42 nu + 10% als wij winnen.                        ║
+║  Kosten: €42 nu + 25% als wij winnen.                        ║
 ║  Jij ontvangt netto: €318,—                                  ║
 ║                                                              ║
 ║  KLM betaalt gemiddeld binnen 7 weken na onze claimbrief.    ║
@@ -680,7 +680,7 @@ hier letterlijk op. Ze weten dat wachten werkt.
 Jij hoeft dat niet te accepteren.
 
 Voor €42 dienen wij namens jou een officiële claimbrief in.
-Als wij winnen, betaal je 10% commissie. Als niet: alleen €42.
+Als wij winnen, betaal je 25% commissie. Als niet: alleen €42.
 
 Je uitkomst staat klaar: €400 voor jou, €318 na onze kosten.
 

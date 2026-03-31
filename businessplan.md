@@ -98,7 +98,7 @@ Stadium 3 Sophistication (onze kans):
 | EUclaim.nl | No cure, no pay | 29% + BTW | Stadium 1–2 (first mover) |
 | AviClaim.nl | No cure, no pay | 25% | Stadium 2 (volgend) |
 | ClaimCompass | No cure, no pay | 35% | Stadium 2 (generiek) |
-| **VluchtVertraagd.nl** | **€42 + 10% bij succes** | **Transparant** | **Stadium 3 — nieuw mechanisme (gratis analyse)** |
+| **VluchtVertraagd.nl** | **€42 + 25% bij succes** | **Transparant** | **Stadium 3 — nieuw mechanisme (gratis analyse)** |
 
 **Ons onderscheidend vermogen (Schwartz: het mechanisme als USP):**
 - **De gratis analyse** — niet "claim maar geld", maar "check eerst of jij recht hebt" → geloofwaardiger, lager risico voor de klant

@@ -169,7 +169,7 @@ function PayoutSection({ claim, token, onSave }: { claim: Claim; token: string; 
   function recalcNet(gross: string) {
     const g = parseFloat(gross)
     if (!isNaN(g) && g > 0) {
-      const net = Math.max(0, g - 42 - g * 0.10)
+      const net = Math.max(0, g - 42 - g * 0.25)
       setNetAmount(net.toFixed(2))
     } else {
       setNetAmount('')
@@ -284,7 +284,7 @@ function PayoutSection({ claim, token, onSave }: { claim: Claim; token: string; 
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
             Netto naar klant (€){' '}
             <span style={{ fontSize: '0.65rem', fontWeight: 400, color: '#9CA3AF' }}>
-              {netOverride ? '(handmatig)' : '(auto: bruto − €42 − 10%)'}
+              {netOverride ? '(handmatig)' : '(auto: bruto − €42 − 25%)'}
             </span>
           </label>
           <input

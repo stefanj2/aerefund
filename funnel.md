@@ -241,7 +241,7 @@ Elke zin op deze pagina is geschreven om die motivatie om te zetten in actie.
 ║  Wat kost dit jou?                                           ║
 ║  ─────────────────────────────────────────────────────       ║
 ║  ✓ €42 administratiekosten (eenmalig, nu)                    ║
-║  ✓ 10% commissie (€80) — alleen als wij winnen               ║
+║  ✓ 25% commissie (€200) — alleen als wij winnen               ║
 ║  ─────────────────────────────────────────────────────       ║
 ║  Jij ontvangt minimaal:  € 678,—                             ║
 ║                                                              ║
@@ -441,7 +441,7 @@ De klant heeft al 3 stappen doorlopen. Ze zijn committed. De betaalpagina moet d
 ║  💶 Verwachte compensatie: €400                              ║
 ║  ──────────────────────────────────────────────────────      ║
 ║  Te betalen nu: €42,00 administratiekosten                   ║
-║  Bij succes: 10% commissie (€40)                             ║
+║  Bij succes: 25% commissie (€100)                             ║
 ║  Jij ontvangt: €318 (na alle kosten)                         ║
 ║                                                              ║
 ║  Betaalmethode:                                              ║
@@ -610,7 +610,7 @@ Ze wilden niet. Wij bleven aandringen.
 Nu betalen ze.
 
 Compensatie: €400,00
-Onze fee (10% + €42): €82,00
+Onze fee (25% + €42): €142,00
 ─────────────────────────
 Jij ontvangt: €318,00
 

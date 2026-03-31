@@ -61,7 +61,7 @@ const WHY_ITEMS = [
   },
   {
     title: 'Geen winst, geen kosten',
-    desc: 'Onze juridische experts halen de compensatie voor jou op. Geen financieel risico — je betaalt €42 bij indiening en 10% bij succes.',
+    desc: 'Onze juridische experts halen de compensatie voor jou op. Geen financieel risico — je betaalt €42 bij indiening en 25% bij succes.',
     visual: (
       <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #d9fce8 100%)', borderRadius: '14px', padding: '1.25rem', marginBottom: '1.25rem', minHeight: '148px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.5rem', alignItems: 'stretch', height: '100%' }}>
@@ -79,7 +79,7 @@ const WHY_ITEMS = [
           </div>
           <div>
             <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--green)', margin: '0 0 0.5rem' }}>Wij</p>
-            {[['Vooraf', '€0 ✓'], ['Indiening', '€42'], ['Bij succes', '+ 10%']].map(([l, v]) => (
+            {[['Vooraf', '€0 ✓'], ['Indiening', '€42'], ['Bij succes', '+ 25%']].map(([l, v]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: '6px', padding: '0.32rem 0.5rem', marginBottom: '0.3rem', border: '1px solid rgba(34,197,94,0.22)' }}>
                 <span style={{ fontSize: '0.6rem', color: '#64748b' }}>{l}</span>
                 <span style={{ fontSize: '0.6rem', fontWeight: 700, color: l === 'Vooraf' ? 'var(--green)' : 'var(--text)' }}>{v}</span>
@@ -251,7 +251,7 @@ const FAQS = [
   },
   {
     q: 'Wat kost het?',
-    a: 'De check is gratis. Dien je de claim in, dan betaal je €42. Bij succes ook 10% commissie over het uitgekeerde bedrag. Geen resultaat? Dan betaal je niets extra.',
+    a: 'De check is gratis. Dien je de claim in, dan betaal je €42. Bij succes ook 25% commissie over het uitgekeerde bedrag. Geen resultaat? Dan betaal je niets extra.',
   },
 ]
 
@@ -521,7 +521,7 @@ export default function VluchtGeannuleerdPage() {
       <section id="rechten" style={{ background: '#fff', padding: '6rem 0' }}>
         <div className="container-wide">
           <div style={{ marginBottom: '3.5rem' }}>
-            <SectionLabel>10% commissie alleen bij succes</SectionLabel>
+            <SectionLabel>25% commissie alleen bij succes</SectionLabel>
             <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: 'clamp(1.875rem, 3vw, 2.625rem)', color: 'var(--navy)', letterSpacing: '-0.025em', marginBottom: '0.875rem' }}>
               Waarom Aerefund kiezen?
             </h2>
@@ -722,7 +722,7 @@ export default function VluchtGeannuleerdPage() {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
           <p style={{ marginTop: '1.125rem', fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)' }}>
-            €42 achteraf bij indiening &nbsp;·&nbsp; 10% commissie alleen bij succes
+            €42 achteraf bij indiening &nbsp;·&nbsp; 25% commissie alleen bij succes
           </p>
         </div>
       </section>

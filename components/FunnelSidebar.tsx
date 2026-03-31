@@ -310,7 +310,7 @@ function Step3Sidebar({ airline, review }: { airline?: AirlineInfo; review?: { n
           },
           {
             q: 'Wat kost het precies?',
-            a: `€42 factuur na indiening + 10% commissie bij succesvolle uitbetaling. De check is altijd gratis.`,
+            a: `€42 factuur na indiening + 25% commissie bij succesvolle uitbetaling. De check is altijd gratis.`,
           },
           {
             q: 'Hoe lang duurt het?',

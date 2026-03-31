@@ -82,7 +82,7 @@ function customerEmail(data: ClaimPayload): { html: string; text: string } {
     ``,
     `Servicenota`,
     ``,
-    `Je ontvangt per aparte email een servicenota van 42 euro. Bij succesvolle uitbetaling houden wij de servicekosten (42 euro + 10% commissie) in en maken het nettobedrag binnen 5 werkdagen over — wij vragen jouw IBAN op zodra het geld is ontvangen.`,
+    `Je ontvangt per aparte email een servicenota van 42 euro. Bij succesvolle uitbetaling houden wij de servicekosten (42 euro + 25% commissie) in en maken het nettobedrag binnen 5 werkdagen over — wij vragen jouw IBAN op zodra het geld is ontvangen.`,
     ``,
     `Vragen? Stuur een bericht naar claim@aerefund.com`,
     ``,
@@ -144,8 +144,8 @@ ${preheader(`Referentie ${token ? token + ' - ' : ''}vlucht ${data.flight.flight
     <div style="${ORANGE_BOX}">
       <p style="margin: 0 0 6px; color: #9a3412; font-weight: 700; font-size: 15px;">Onze servicenota</p>
       <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
-        Je ontvangt per aparte email een servicenota van €42. Bij succesvolle uitbetaling houden wij 10% commissie in.
-        Na ontvangst houden wij de servicekosten (€42 + 10% commissie) in en maken het nettobedrag binnen 5 werkdagen over — wij vragen jouw IBAN op zodra het geld is ontvangen.
+        Je ontvangt per aparte email een servicenota van €42. Bij succesvolle uitbetaling houden wij 25% commissie in.
+        Na ontvangst houden wij de servicekosten (€42 + 25% commissie) in en maken het nettobedrag binnen 5 werkdagen over — wij vragen jouw IBAN op zodra het geld is ontvangen.
       </p>
     </div>
 
@@ -224,7 +224,7 @@ function invoiceEmail(data: ClaimPayload, invoiceNumber: string): { html: string
     `Bedrag       : 42,00`,
     `Te voldoen   : ${dueDate}`,
     ``,
-    `Bij een geslaagde claim rekenen wij een vergoeding van 10% over het ontvangen bedrag. Dit wordt apart in rekening gebracht.`,
+    `Bij een geslaagde claim rekenen wij een vergoeding van 25% over het ontvangen bedrag. Dit wordt apart in rekening gebracht.`,
     ``,
     `Vragen over deze nota? Stuur een bericht naar claim@aerefund.com`,
     ``,
@@ -370,7 +370,7 @@ ${preheader(`Servicenota ${invoiceNumber} voor uw compensatieclaim vlucht ${data
 
     <p style="color: #6b7280; font-size: 13px; line-height: 1.6; background: #f9fafb; border-radius: 8px; padding: 12px 14px;">
       <strong style="color: #374151;">Commissie:</strong> bij succesvolle uitbetaling van de compensatie brengen wij aanvullend
-      10% van het ontvangen bedrag in rekening. Dit wordt gefactureerd nadat ${airlineName} de compensatie heeft uitbetaald.
+      25% van het ontvangen bedrag in rekening. Dit wordt gefactureerd nadat ${airlineName} de compensatie heeft uitbetaald.
     </p>
 
     <p style="${P}">
@@ -629,6 +629,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as ClaimPayload
 
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+             ?? req.headers.get('x-real-ip')
+             ?? null
+
     const token = body.token ?? null
     const invoiceNumber = generateInvoiceNumber(token ?? Math.random().toString(36).substring(2, 8).toUpperCase())
 
@@ -649,6 +653,7 @@ export async function POST(req: NextRequest) {
         boarding_pass_filename: body.boardingPassFileName,
         invoice_number: invoiceNumber,
         submitted_at: body.submittedAt,
+        ip_address: ip,
         updated_at: new Date().toISOString(),
       }).eq('token', token).then(({ error }) => {
         if (error) console.error('Supabase submit update error:', error)
@@ -672,6 +677,7 @@ export async function POST(req: NextRequest) {
         boarding_pass_filename: body.boardingPassFileName,
         invoice_number: invoiceNumber,
         submitted_at: body.submittedAt,
+        ip_address: ip,
       }).then(({ error }) => {
         if (error) console.error('Supabase fresh insert error:', error)
       })

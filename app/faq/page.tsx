@@ -14,7 +14,7 @@ const FAQ_CATEGORIES = [
     items: [
       {
         q: 'Wat kost het?',
-        a: 'De check is volledig gratis. Als je besluit de claim in te dienen, sturen wij een factuur van €42 (incl. BTW) per email. Bij een succesvolle uitbetaling rekenen wij ook 10% commissie over de ontvangen compensatie. Geen succes? Dan geen commissie.',
+        a: 'De check is volledig gratis. Als je besluit de claim in te dienen, sturen wij een factuur van €42 (incl. BTW) per email. Bij een succesvolle uitbetaling rekenen wij ook 25% commissie over de ontvangen compensatie. Geen succes? Dan geen commissie.',
       },
       {
         q: 'Wanneer moet ik betalen?',
@@ -22,7 +22,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: 'Hoe wordt de commissie berekend?',
-        a: 'De commissie van 10% is alleen verschuldigd als de airline daadwerkelijk compensatie uitkeert. De commissie wordt berekend over het bruto uitgekeerde bedrag, exclusief BTW.',
+        a: 'De commissie van 25% is alleen verschuldigd als de airline daadwerkelijk compensatie uitkeert. De commissie wordt berekend over het bruto uitgekeerde bedrag, exclusief BTW.',
       },
       {
         q: 'Betaalt de airline rechtstreeks aan mij?',

@@ -77,7 +77,7 @@ export default function AlgemeneVoorwaardenPage() {
           <p>
             Aerefund.com zal de luchtvaartmaatschappij van de cessie in kennis stellen (mededeling als
             bedoeld in art. 3:94 lid 1 BW) door middel van de claimbrief. Na ontvangst van de compensatie
-            maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 10% — het
+            maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 25% — het
             nettobedrag binnen 5 werkdagen over naar het door de opdrachtgever nader op te geven IBAN.
           </p>
           <p>
@@ -105,16 +105,16 @@ export default function AlgemeneVoorwaardenPage() {
               <strong>Indieningstarief — achteraf per factuur:</strong> voor het opstellen en indienen van de claim brengt Aerefund.com een vast bedrag van <strong>€42 (inclusief BTW)</strong> in rekening. De factuur wordt binnen 24 uur na indiening per email verstuurd. Betaling dient te geschieden binnen <strong>14 dagen na factuurdatum</strong>. Dit bedrag is verschuldigd ongeacht de uitkomst van de claim.
             </li>
             <li>
-              <strong>Commissie bij succes:</strong> bij succesvolle uitbetaling van compensatie door de luchtvaartmaatschappij is Aerefund.com gerechtigd een commissie van <strong>10% van het uitgekeerde compensatiebedrag (exclusief BTW)</strong> in te houden. Deze commissie is uitsluitend verschuldigd indien daadwerkelijk compensatie wordt uitbetaald.
+              <strong>Commissie bij succes:</strong> bij succesvolle uitbetaling van compensatie door de luchtvaartmaatschappij is Aerefund.com gerechtigd een commissie van <strong>25% van het uitgekeerde compensatiebedrag (exclusief BTW)</strong> in te houden. Deze commissie is uitsluitend verschuldigd indien daadwerkelijk compensatie wordt uitbetaald.
             </li>
             <li>
               Bij niet-tijdige betaling van de factuur is Aerefund.com gerechtigd de dienstverlening op te schorten totdat betaling heeft plaatsgevonden.
             </li>
             <li>
-              De luchtvaartmaatschappij betaalt de compensatie rechtstreeks aan Aerefund.com. Na ontvangst maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 10% — het nettobedrag binnen <strong>5 werkdagen</strong> over naar het door de opdrachtgever nader op te geven IBAN. De opdrachtgever machtigt Aerefund.com uitdrukkelijk tot verrekening van de servicenota en commissie met de ontvangen compensatie alvorens het nettobedrag over te maken.
+              De luchtvaartmaatschappij betaalt de compensatie rechtstreeks aan Aerefund.com. Na ontvangst maakt Aerefund.com — na inhouding van de servicenota (€42) en de commissie van 25% — het nettobedrag binnen <strong>5 werkdagen</strong> over naar het door de opdrachtgever nader op te geven IBAN. De opdrachtgever machtigt Aerefund.com uitdrukkelijk tot verrekening van de servicenota en commissie met de ontvangen compensatie alvorens het nettobedrag over te maken.
             </li>
             <li>
-              Indien de luchtvaartmaatschappij de compensatie rechtstreeks aan de opdrachtgever uitbetaalt, is de opdrachtgever gehouden de verschuldigde commissie van <strong>10% (exclusief BTW)</strong> over het ontvangen compensatiebedrag binnen <strong>14 dagen</strong> na ontvangst aan Aerefund.com te voldoen. Aerefund.com stuurt hiervoor een aparte factuur.
+              Indien de luchtvaartmaatschappij de compensatie rechtstreeks aan de opdrachtgever uitbetaalt, is de opdrachtgever gehouden de verschuldigde commissie van <strong>25% (exclusief BTW)</strong> over het ontvangen compensatiebedrag binnen <strong>14 dagen</strong> na ontvangst aan Aerefund.com te voldoen. Aerefund.com stuurt hiervoor een aparte factuur.
             </li>
           </ol>
         </LegalSection>
@@ -142,7 +142,7 @@ export default function AlgemeneVoorwaardenPage() {
             Aerefund.com streeft naar een succesvolle afwikkeling van iedere claim, maar kan geen garantie geven op de uitkomst. Het recht op compensatie is afhankelijk van factoren die buiten de invloedssfeer van Aerefund.com liggen, waaronder de beslissing van de luchtvaartmaatschappij en de toepasselijkheid van uitzonderingsgronden (buitengewone omstandigheden als bedoeld in EC 261/2004).
           </p>
           <p>
-            Het indieningstarief van €42 is in alle gevallen verschuldigd, ook indien de claim wordt afgewezen. De commissie van 10% is alleen verschuldigd bij daadwerkelijke uitbetaling van compensatie.
+            Het indieningstarief van €42 is in alle gevallen verschuldigd, ook indien de claim wordt afgewezen. De commissie van 25% is alleen verschuldigd bij daadwerkelijke uitbetaling van compensatie.
           </p>
         </LegalSection>
 
@@ -165,7 +165,7 @@ export default function AlgemeneVoorwaardenPage() {
 
         <LegalSection title="Artikel 10 — Beëindiging">
           <p>
-            De opdrachtgever kan de overeenkomst op elk moment schriftelijk opzeggen via <a href="mailto:info@aerefund.com" style={{ color: 'var(--blue)' }}>info@aerefund.com</a>. Bij opzegging na aanvang van de dienstverlening blijft het indieningstarief van €42 verschuldigd. Indien de claim op het moment van opzegging reeds succesvol is afgewikkeld, blijft de commissie van 10% verschuldigd.
+            De opdrachtgever kan de overeenkomst op elk moment schriftelijk opzeggen via <a href="mailto:info@aerefund.com" style={{ color: 'var(--blue)' }}>info@aerefund.com</a>. Bij opzegging na aanvang van de dienstverlening blijft het indieningstarief van €42 verschuldigd. Indien de claim op het moment van opzegging reeds succesvol is afgewikkeld, blijft de commissie van 25% verschuldigd.
           </p>
         </LegalSection>
 

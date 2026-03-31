@@ -885,7 +885,7 @@ export default async function AirlinePage({
             Check mijn vlucht — gratis →
           </a>
           <p style={{ marginTop: '1rem', fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' }}>
-            €42 bij indiening · 10% commissie bij uitbetaling · Niets vooraf
+            €42 bij indiening · 25% commissie bij uitbetaling · Niets vooraf
           </p>
         </div>
       </section>

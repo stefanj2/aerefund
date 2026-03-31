@@ -680,7 +680,7 @@ export default function UitkomstPage() {
         </div>
 
         {/* Fee vergelijking — alleen tonen als we goedkoper zijn dan marktgemiddelde */}
-        {effectiveAmountPerPerson > 0 && Math.round(effectiveAmountPerPerson * 0.25) - Math.round(42 + effectiveAmountPerPerson * 0.10) > 0 && (
+        {effectiveAmountPerPerson > 0 && Math.round(effectiveAmountPerPerson * 0.35) - Math.round(42 + effectiveAmountPerPerson * 0.25) > 0 && (
           <div className="animate-fade-up d3" style={{
             marginBottom: '0.875rem', padding: '0.875rem 1rem',
             background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
@@ -690,9 +690,9 @@ export default function UitkomstPage() {
             </p>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {[
-                { name: 'Aerefund', detail: '€42 + 10%', total: Math.round(42 + effectiveAmountPerPerson * 0.10), best: true },
-                { name: 'ClaimCompass', detail: '25%', total: Math.round(effectiveAmountPerPerson * 0.25), best: false },
-                { name: 'AirHelp', detail: '35%', total: Math.round(effectiveAmountPerPerson * 0.35), best: false },
+                { name: 'Aerefund', detail: '€42 + 25%', total: Math.round(42 + effectiveAmountPerPerson * 0.25), best: true },
+                { name: 'ClaimCompass', detail: '35%', total: Math.round(effectiveAmountPerPerson * 0.35), best: false },
+                { name: 'AirHelp', detail: '45%', total: Math.round(effectiveAmountPerPerson * 0.45), best: false },
               ].map(({ name, detail, total, best }) => (
                 <div key={name} style={{
                   flex: 1, padding: '0.5rem 0.375rem', borderRadius: '8px', textAlign: 'center', position: 'relative',
@@ -713,7 +713,7 @@ export default function UitkomstPage() {
               ))}
             </div>
             <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.5rem 0 0', textAlign: 'center' }}>
-              Jij bespaart {formatAmount(Math.round(effectiveAmountPerPerson * 0.25) - Math.round(42 + effectiveAmountPerPerson * 0.10))} t.o.v. de markt
+              Jij bespaart {formatAmount(Math.round(effectiveAmountPerPerson * 0.35) - Math.round(42 + effectiveAmountPerPerson * 0.25))} t.o.v. de markt
             </p>
           </div>
         )}

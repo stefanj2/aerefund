@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 
-type FunnelStep = { key: string; label: string; count: number }
+type FunnelStep = { key: string; label: string; count: number; source?: string }
 type AirlineRow = { iata: string; submitted: number; won: number; total_compensation: number }
 type TypeRow = { type: string; submitted: number; won: number }
 type Revenue = { fees_invoiced: number; fees_collected: number; commission_earned: number; total_earned: number }
@@ -101,7 +101,7 @@ export default function AdminFunnelPage() {
             {[
               { label: 'Facturen verstuurd', value: fmt(data.revenue.fees_invoiced), sub: `${Math.round(data.revenue.fees_invoiced / 42)} facturen × €42`, color: '#D97706', bg: '#FFFBEB' },
               { label: 'Fees geïnd',         value: fmt(data.revenue.fees_collected), sub: 'Betaalde facturen', color: '#059669', bg: '#ECFDF5' },
-              { label: 'Commissie verdiend', value: fmt(data.revenue.commission_earned), sub: '10% van uitbetalingen', color: '#7C3AED', bg: '#F5F3FF' },
+              { label: 'Commissie verdiend', value: fmt(data.revenue.commission_earned), sub: '25% van uitbetalingen', color: '#7C3AED', bg: '#F5F3FF' },
               { label: 'Totale omzet',       value: fmt(data.revenue.total_earned), sub: 'Fees + commissie', color: '#1D4ED8', bg: '#EFF6FF' },
             ].map((card, i) => (
               <div key={i} style={{ background: '#fff', borderRadius: '12px', padding: '1.125rem', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', border: '1px solid #E5E7EB' }}>
@@ -146,7 +146,9 @@ export default function AdminFunnelPage() {
                           width: `${barPct}%`, height: '100%',
                           background: i === data.funnel.length - 1
                             ? 'linear-gradient(90deg, #059669, #34d399)'
-                            : 'linear-gradient(90deg, #3B82F6, #60A5FA)',
+                            : step.source === 'claims'
+                              ? 'linear-gradient(90deg, #7C3AED, #A78BFA)'
+                              : 'linear-gradient(90deg, #3B82F6, #60A5FA)',
                           borderRadius: '6px',
                           transition: 'width 0.5s ease',
                         }} />
@@ -259,21 +261,21 @@ export default function AdminFunnelPage() {
             </div>
           </div>
 
-          {/* GA4 note */}
-          <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '10px', padding: '1rem 1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0, marginTop: '1px' }}>
-              <circle cx="9" cy="9" r="7.5" stroke="#0284C7" strokeWidth="1.5" />
-              <path d="M9 8v4M9 6.5v.5" stroke="#0284C7" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <div>
-              <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0C4A6E', margin: '0 0 0.2rem' }}>
-                GA4 koppeling actief
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#075985', margin: 0 }}>
-                Funnel events worden ook naar Google Analytics gestuurd (G-1VBKEHCXN5).
-                Bekijk volledige gebruikersdata inclusief verkeersbronnen in GA4 → Rapporten → Funnel verkenner.
-              </p>
-            </div>
+          {/* Data source legend */}
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '0.875rem 1.25rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Databron:</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#475569' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'linear-gradient(90deg, #3B82F6, #60A5FA)', flexShrink: 0 }} />
+              Stap 1–6: funnel_events tabel
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#475569' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'linear-gradient(90deg, #7C3AED, #A78BFA)', flexShrink: 0 }} />
+              Stap 7: claims tabel (ingediend)
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#475569' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'linear-gradient(90deg, #059669, #34d399)', flexShrink: 0 }} />
+              Stap 8: claims tabel (gewonnen)
+            </span>
           </div>
         </>
       )}

@@ -684,7 +684,7 @@ const [postalCode, setPostalCode]   = useState('')
                     err: errors.terms,
                     text: <>
                       Ik geef Aerefund opdracht mijn compensatieclaim in te dienen bij {airlineName} namens mij
-                      (vorderingsoverdracht). Aerefund betaalt mij de compensatie na aftrek van €42 + 10% commissie.
+                      (vorderingsoverdracht). Aerefund betaalt mij de compensatie na aftrek van €42 + 25% commissie.
                       {!showFullTerms && (
                         <button
                           type="button"
@@ -706,7 +706,7 @@ const [postalCode, setPostalCode]   = useState('')
                             onClick={(e) => e.stopPropagation()}>privacyverklaring</a>.
                           Ik draag mijn recht op compensatie bij {airlineName} op grond van EC 261/2004 over aan
                           Aerefund (vorderingsoverdracht). Aerefund int de compensatie als eigen schuldeiser en betaalt
-                          mij het nettobedrag na aftrek van de servicenota van €42 en 10% commissie terug.
+                          mij het nettobedrag na aftrek van de servicenota van €42 en 25% commissie terug.
                         </span>
                       )}
                     </>,

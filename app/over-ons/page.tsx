@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const VALUES = [
   {
     title: 'Transparant over kosten',
-    desc: '€42 bij indiening, 10% bij succes. Geen kleine lettertjes, geen verrassingen achteraf.',
+    desc: '€42 bij indiening, 25% bij succes. Geen kleine lettertjes, geen verrassingen achteraf.',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
         <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="var(--blue)" strokeWidth="1.75" strokeLinejoin="round" />
@@ -144,7 +144,7 @@ export default function OverOnsPage() {
             {[
               { label: 'Vluchtcheck', price: 'Gratis', note: 'Altijd' },
               { label: 'Claimindiening', price: '€42', note: 'Gefactureerd achteraf, ongeacht uitkomst' },
-              { label: 'Commissie bij succes', price: '10%', note: 'Alleen bij daadwerkelijke uitbetaling' },
+              { label: 'Commissie bij succes', price: '25%', note: 'Alleen bij daadwerkelijke uitbetaling' },
             ].map((row, i, arr) => (
               <div key={row.label} style={{
                 display: 'grid', gridTemplateColumns: '1fr auto',

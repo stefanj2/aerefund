@@ -200,7 +200,7 @@ function buildFaqs(config: AirlineConfig): FAQ[] {
     },
     {
       q: `Wat kost het om een ${name}-claim in te dienen?`,
-      a: `Je betaalt een vaste administratievergoeding van €42 ná indiening van je claim. Bij succes rekenen we aanvullend 10% commissie. Geen kosten vooraf, geen verborgen kosten. Veel goedkoper dan traditionele claimbureaus die 25–35% vragen.`,
+      a: `Je betaalt een vaste administratievergoeding van €42 ná indiening van je claim. Bij succes rekenen we aanvullend 25% commissie. Geen kosten vooraf, geen verborgen kosten. Veel goedkoper dan traditionele claimbureaus die 35–45% vragen.`,
     },
     {
       q: `Kan ik nog claimen als mijn vlucht meer dan een jaar geleden was?`,

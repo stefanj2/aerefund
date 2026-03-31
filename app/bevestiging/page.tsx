@@ -81,7 +81,7 @@ export default function BevestigingPage() {
     { label: 'Binnen 24 uur', text: `Servicenota van €42 per email naar ${email}`, active: false },
     { label: 'Week 1–2', text: `Claimbrief naar ${airlineName} met mededeling van vorderingsoverdracht aan Aerefund`, active: false },
     { label: `Week 2–${Math.max(3, airline.avgPaymentWeeks - 2)}`, text: `Onderhandeling met ${airlineName}`, active: false },
-    { label: `±${airline.avgPaymentWeeks} weken`, text: `Nettobedrag op jouw rekening na aftrek van €42 + 10%`, active: false },
+    { label: `±${airline.avgPaymentWeeks} weken`, text: `Nettobedrag op jouw rekening na aftrek van €42 + 25%`, active: false },
   ]
 
   return (
