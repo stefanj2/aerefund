@@ -31,6 +31,7 @@ export default function SiteNav() {
           <Link href="/faq" className="nav-link">FAQ</Link>
           <Link href="/over-ons" className="nav-link">Over ons</Link>
           <Link href="/contact" className="nav-link">Contact</Link>
+          <Link href="/mijn-claim" className="nav-link">Mijn Claim</Link>
         </nav>
 
         {/* CTA */}
