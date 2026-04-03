@@ -5,6 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { validateIban } from '@/lib/validateIban'
 
+type RequiredDoc = {
+  id: string
+  label: string
+  hint: string
+  done: boolean
+  isFile: boolean
+}
+
 type ClaimInfo = {
   found: boolean
   firstName?: string
@@ -12,6 +20,48 @@ type ClaimInfo = {
   hasIban?: boolean
   hasBoardingPass?: boolean
   hasIdCopy?: boolean
+  claimType?: string
+  requiredDocuments?: RequiredDoc[]
+}
+
+// Short labels for the progress grid
+const DOC_SHORT_LABELS: Record<string, string> = {
+  iban: 'IBAN',
+  boarding_pass: 'Boardingpass',
+  id_copy: 'ID-bewijs',
+  cancellation_notice: 'Annulering',
+  denial_notice: 'Weigering',
+}
+
+// Icons per document type
+function DocIcon({ docId }: { docId: string }) {
+  if (docId === 'iban') return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="5" width="16" height="12" rx="2" stroke="var(--orange)" strokeWidth="1.5" />
+      <path d="M2 9h16" stroke="var(--orange)" strokeWidth="1.5" />
+      <path d="M6 13h3" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+  if (docId === 'boarding_pass') return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <path d="M14 2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" stroke="var(--orange)" strokeWidth="1.5" />
+      <path d="M8 7h4M8 10h4M8 13h2" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+  if (docId === 'id_copy') return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="4" width="16" height="13" rx="2" stroke="var(--orange)" strokeWidth="1.5" />
+      <circle cx="7" cy="10" r="2" stroke="var(--orange)" strokeWidth="1.5" />
+      <path d="M11 9h4M11 12h3" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+  // cancellation_notice, denial_notice — generic document icon
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+      <path d="M14 2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" stroke="var(--orange)" strokeWidth="1.5" />
+      <path d="M8 7h4M8 10h4M8 13h2" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
 }
 
 function UploadArea({
@@ -90,22 +140,38 @@ function AanvullenContent() {
   const params = useSearchParams()
   const token = params.get('token') ?? ''
 
-  const [claim, setClaim]           = useState<ClaimInfo | null>(null)
-  const [iban, setIban]             = useState('')
-  const [ibanError, setIbanError]   = useState('')
-  const [bpFile, setBpFile]         = useState<File | null>(null)
-  const [idFile, setIdFile]         = useState<File | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [done, setDone]             = useState(false)
+  const [claim, setClaim]             = useState<ClaimInfo | null>(null)
+  const [requiredDocs, setRequiredDocs] = useState<RequiredDoc[]>([])
+  const [iban, setIban]               = useState('')
+  const [ibanError, setIbanError]     = useState('')
+  const [fileState, setFileState]     = useState<Record<string, File | null>>({})
+  const [submitting, setSubmitting]   = useState(false)
+  const [done, setDone]               = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) { setClaim({ found: false }); return }
     fetch(`/api/aanvullen?token=${encodeURIComponent(token)}`)
       .then(r => r.json())
-      .then(setClaim)
+      .then((data: ClaimInfo) => {
+        setClaim(data)
+        if (data.requiredDocuments) {
+          setRequiredDocs(data.requiredDocuments)
+        } else if (data.found) {
+          // Fallback for older API responses without requiredDocuments
+          setRequiredDocs([
+            { id: 'iban', label: 'IBAN-rekeningnummer', hint: 'Waarop wij het nettobedrag overmaken', done: !!data.hasIban, isFile: false },
+            { id: 'boarding_pass', label: 'Boardingpass of boekingsbevestiging', hint: 'Bewijs dat je op de vlucht zat', done: !!data.hasBoardingPass, isFile: true },
+            { id: 'id_copy', label: 'Kopie identiteitsbewijs', hint: 'Paspoort of rijbewijs', done: !!data.hasIdCopy, isFile: true },
+          ])
+        }
+      })
       .catch(() => setClaim({ found: false }))
   }, [token])
+
+  function setFile(docId: string, file: File | null) {
+    setFileState(prev => ({ ...prev, [docId]: file }))
+  }
 
   // Loading
   if (!claim) return (
@@ -145,6 +211,16 @@ function AanvullenContent() {
     </div>
   )
 
+  // Compute current state for each doc
+  function isDocDone(doc: RequiredDoc): boolean {
+    if (doc.id === 'iban') return doc.done || !!iban.trim()
+    return doc.done || !!fileState[doc.id]
+  }
+
+  const allDone = requiredDocs.every(isDocDone)
+  const somethingNew = !!iban.trim() || Object.values(fileState).some(f => !!f)
+  const missingCount = requiredDocs.filter(d => !isDocDone(d)).length
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (iban) {
@@ -157,8 +233,13 @@ function AanvullenContent() {
     const fd = new FormData()
     fd.append('token', token)
     if (iban.trim()) fd.append('iban', iban.trim())
-    if (bpFile)      fd.append('boarding_pass', bpFile)
-    if (idFile)      fd.append('id_copy', idFile)
+
+    // Append all file fields
+    for (const doc of requiredDocs) {
+      if (doc.isFile && fileState[doc.id]) {
+        fd.append(doc.id, fileState[doc.id]!)
+      }
+    }
 
     try {
       const res  = await fetch('/api/aanvullen', { method: 'POST', body: fd })
@@ -174,12 +255,6 @@ function AanvullenContent() {
       setSubmitting(false)
     }
   }
-
-  const hasIbanNow   = claim.hasIban        || !!iban.trim()
-  const hasBpNow     = claim.hasBoardingPass || !!bpFile
-  const hasIdNow     = claim.hasIdCopy      || !!idFile
-  const somethingNew = !!iban.trim()        || !!bpFile || !!idFile
-  const allDone      = hasIbanNow && hasBpNow && hasIdNow
 
   const flightLabel = claim.flight?.flightNumber
     ? `${claim.flight.flightNumber}${claim.flight.date ? ' · ' + new Date(claim.flight.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}`
@@ -229,146 +304,97 @@ function AanvullenContent() {
             Claim aanvullen
           </p>
           <h1 style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', color: 'var(--navy)', marginBottom: '0.375rem', lineHeight: 1.15 }}>
-            {claim.firstName ? `${claim.firstName}, nog 3 gegevens nodig` : 'Nog 3 gegevens nodig'}
+            {claim.firstName
+              ? `${claim.firstName}, nog ${requiredDocs.length} gegeven${requiredDocs.length === 1 ? '' : 's'} nodig`
+              : `Nog ${requiredDocs.length} gegeven${requiredDocs.length === 1 ? '' : 's'} nodig`}
           </h1>
           {flightLabel && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>{flightLabel}</p>
           )}
         </div>
 
-        {/* Progress row */}
+        {/* Progress row — dynamic grid */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${requiredDocs.length}, 1fr)`,
           gap: '0.5rem', marginBottom: '1.75rem',
         }}>
-          {[
-            { label: 'IBAN', done: hasIbanNow },
-            { label: 'Boardingpass', done: hasBpNow },
-            { label: 'ID-bewijs', done: hasIdNow },
-          ].map(({ label, done: isDone }) => (
-            <div key={label} style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
-              padding: '0.625rem 0.5rem',
-              background: isDone ? 'var(--green-dim)' : '#fff',
-              border: `1px solid ${isDone ? 'var(--green-border)' : 'var(--border)'}`,
-              borderRadius: '10px',
-            }}>
-              <CheckIcon done={isDone} />
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isDone ? 'var(--green)' : 'var(--text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
-                {label}
-              </span>
-            </div>
-          ))}
+          {requiredDocs.map(doc => {
+            const isDone = isDocDone(doc)
+            return (
+              <div key={doc.id} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem',
+                padding: '0.625rem 0.5rem',
+                background: isDone ? 'var(--green-dim)' : '#fff',
+                border: `1px solid ${isDone ? 'var(--green-border)' : 'var(--border)'}`,
+                borderRadius: '10px',
+              }}>
+                <CheckIcon done={isDone} />
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isDone ? 'var(--green)' : 'var(--text-muted)', textAlign: 'center', lineHeight: 1.3 }}>
+                  {DOC_SHORT_LABELS[doc.id] ?? doc.label}
+                </span>
+              </div>
+            )
+          })}
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
 
-          {/* ── 1. IBAN ─────────────────────────────────────────────── */}
-          <div className="card" style={{ padding: '1.125rem 1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                  <rect x="2" y="5" width="16" height="12" rx="2" stroke="var(--orange)" strokeWidth="1.5" />
-                  <path d="M2 9h16" stroke="var(--orange)" strokeWidth="1.5" />
-                  <path d="M6 13h3" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--navy)', margin: 0 }}>
-                    IBAN-rekeningnummer
-                  </p>
-                  {claim.hasIban && (
-                    <span className="badge-green" style={{ fontSize: '0.62rem' }}>
-                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                      Al ontvangen
-                    </span>
-                  )}
+          {/* Dynamic document sections */}
+          {requiredDocs.map(doc => (
+            <div key={doc.id} className="card" style={{ padding: '1.125rem 1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DocIcon docId={doc.id} />
                 </div>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.1rem 0 0' }}>
-                  Hierop storten wij het nettobedrag na ontvangst van de compensatie
-                </p>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--navy)', margin: 0 }}>
+                      {doc.label}
+                    </p>
+                    {doc.done && (
+                      <span className="badge-green" style={{ fontSize: '0.62rem' }}>
+                        <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                        Al ontvangen
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.1rem 0 0' }}>
+                    {doc.hint}
+                  </p>
+                </div>
               </div>
-            </div>
-            <input
-              className="input-field"
-              type="text"
-              value={iban}
-              onChange={e => { setIban(e.target.value.toUpperCase()); setIbanError('') }}
-              placeholder={claim.hasIban ? 'Al ingevuld — optioneel bijwerken' : 'NL00 ABCD 0123456789'}
-              autoComplete="off"
-              spellCheck={false}
-              style={{ letterSpacing: '0.05em' }}
-            />
-            {ibanError && <p style={{ fontSize: '0.72rem', color: 'var(--red)', marginTop: '0.3rem' }}>{ibanError}</p>}
-          </div>
 
-          {/* ── 2. Boardingpass ─────────────────────────────────────── */}
-          <div className="card" style={{ padding: '1.125rem 1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" stroke="var(--orange)" strokeWidth="1.5" />
-                  <path d="M8 7h4M8 10h4M8 13h2" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--navy)', margin: 0 }}>
-                    Boardingpass of boekingsbevestiging
-                  </p>
-                  {claim.hasBoardingPass && (
-                    <span className="badge-green" style={{ fontSize: '0.62rem' }}>
-                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                      Al ontvangen
-                    </span>
-                  )}
-                </div>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.1rem 0 0' }}>
-                  Bewijs dat je daadwerkelijk op de vlucht zat
-                </p>
-              </div>
-            </div>
-            <UploadArea
-              id="bp_upload" file={bpFile}
-              label="Boardingpass uploaden" hint="PDF, JPG of PNG · max 10 MB"
-              onChange={setBpFile} alreadyHas={claim.hasBoardingPass ?? false}
-            />
-          </div>
+              {/* IBAN text input */}
+              {!doc.isFile && doc.id === 'iban' && (
+                <>
+                  <input
+                    className="input-field"
+                    type="text"
+                    value={iban}
+                    onChange={e => { setIban(e.target.value.toUpperCase()); setIbanError('') }}
+                    placeholder={doc.done ? 'Al ingevuld — optioneel bijwerken' : 'NL00 ABCD 0123456789'}
+                    autoComplete="off"
+                    spellCheck={false}
+                    style={{ letterSpacing: '0.05em' }}
+                  />
+                  {ibanError && <p style={{ fontSize: '0.72rem', color: 'var(--red)', marginTop: '0.3rem' }}>{ibanError}</p>}
+                </>
+              )}
 
-          {/* ── 3. Kopie ID ─────────────────────────────────────────── */}
-          <div className="card" style={{ padding: '1.125rem 1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                  <rect x="2" y="4" width="16" height="13" rx="2" stroke="var(--orange)" strokeWidth="1.5" />
-                  <circle cx="7" cy="10" r="2" stroke="var(--orange)" strokeWidth="1.5" />
-                  <path d="M11 9h4M11 12h3" stroke="var(--orange)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--navy)', margin: 0 }}>
-                    Kopie identiteitsbewijs
-                  </p>
-                  {claim.hasIdCopy && (
-                    <span className="badge-green" style={{ fontSize: '0.62rem' }}>
-                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                      Al ontvangen
-                    </span>
-                  )}
-                </div>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.1rem 0 0' }}>
-                  Paspoort of rijbewijs · sommige airlines vragen dit standaard op
-                </p>
-              </div>
+              {/* File upload area */}
+              {doc.isFile && (
+                <UploadArea
+                  id={`upload_${doc.id}`}
+                  file={fileState[doc.id] ?? null}
+                  label={`${doc.label} uploaden`}
+                  hint="PDF, JPG of PNG · max 10 MB"
+                  onChange={f => setFile(doc.id, f)}
+                  alreadyHas={doc.done}
+                />
+              )}
             </div>
-            <UploadArea
-              id="id_upload" file={idFile}
-              label="Identiteitsbewijs uploaden" hint="PDF, JPG of PNG · voor- en achterkant · max 10 MB"
-              onChange={setIdFile} alreadyHas={claim.hasIdCopy ?? false}
-            />
-          </div>
+          ))}
 
           {submitError && (
             <div style={{ background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '10px', padding: '0.875rem 1rem' }}>

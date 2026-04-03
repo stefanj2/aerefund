@@ -632,6 +632,7 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
              ?? req.headers.get('x-real-ip')
              ?? null
+    const userAgent = req.headers.get('user-agent') ?? null
 
     const token = body.token ?? null
     const invoiceNumber = generateInvoiceNumber(token ?? Math.random().toString(36).substring(2, 8).toUpperCase())
@@ -654,6 +655,7 @@ export async function POST(req: NextRequest) {
         invoice_number: invoiceNumber,
         submitted_at: body.submittedAt,
         ip_address: ip,
+        user_agent: userAgent,
         updated_at: new Date().toISOString(),
       }).eq('token', token).then(({ error }) => {
         if (error) console.error('Supabase submit update error:', error)
@@ -678,9 +680,44 @@ export async function POST(req: NextRequest) {
         invoice_number: invoiceNumber,
         submitted_at: body.submittedAt,
         ip_address: ip,
+        user_agent: userAgent,
       }).then(({ error }) => {
         if (error) console.error('Supabase fresh insert error:', error)
       })
+    }
+
+    // Auto-generate consent PDF
+    const claimToken = token ?? null
+    if (claimToken) {
+      try {
+        const { generateConsentPdf } = await import('@/lib/consent-pdf')
+        const pdfBuffer = await generateConsentPdf({
+          token: claimToken,
+          first_name: body.firstName,
+          last_name: body.lastName,
+          email: body.customerEmail,
+          submitted_at: body.submittedAt,
+          flight_data: body.flight,
+          ip_address: ip,
+          user_agent: userAgent,
+          address: body.address,
+          postal_code: body.postalCode,
+          city: body.city,
+          phone: body.phone,
+        })
+
+        // Upload to Supabase Storage
+        if (db) {
+          await db.storage.from('consent-pdfs').upload(
+            `${claimToken}/akkoordverklaring.pdf`,
+            pdfBuffer,
+            { contentType: 'application/pdf', upsert: true }
+          )
+          await db.from('claims').update({ consent_pdf_filename: `${claimToken}/akkoordverklaring.pdf` }).eq('token', claimToken)
+        }
+      } catch (pdfErr) {
+        console.error('Consent PDF generation failed (non-blocking):', pdfErr)
+      }
     }
 
     const confirmation = customerEmail(body)

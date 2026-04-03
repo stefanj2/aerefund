@@ -13,6 +13,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
+import { resend } from '@/lib/resend'
+
+const FROM        = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'info@aerefund.com'
 
 export const runtime = 'nodejs'
 
@@ -106,9 +110,67 @@ export async function POST(req: NextRequest) {
       .eq('token', token)
 
     console.log(`inbound-email: opgeslagen voor claim ${token} van ${from}`)
-    return NextResponse.json({ received: true, matched: true, token })
+
+    // ─── Keyword analysis: detect airline response intent ───────────────
+    const suggestion = analyzeAirlineResponse(subject, bodyText)
+    if (suggestion) {
+      console.log(`inbound-email: auto-detectie voor ${token}: ${suggestion}`)
+
+      await db
+        .from('claims')
+        .update({
+          auto_status_suggestion: suggestion,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('token', token)
+
+      // Notify admin
+      const labelMap: Record<string, string> = {
+        approved_payment: 'Betaling/compensatie bevestigd',
+        approved: 'Claim goedgekeurd',
+        rejected_force_majeure: 'Afgewezen — buitengewone omstandigheden',
+        rejected: 'Afgewezen',
+        info_request: 'Aanvullende informatie gevraagd',
+        counter_offer: 'Tegenaanbod/voucher',
+      }
+
+      await resend.emails.send({
+        from: `Aerefund <${FROM}>`,
+        to: ADMIN_EMAIL,
+        subject: `Automatische detectie: claim ${token} — ${labelMap[suggestion] ?? suggestion}`,
+        html: `<p>Er is een e-mail ontvangen voor claim <strong>${token}</strong> van <strong>${from}</strong>.</p>
+<p>Onderwerp: <em>${subject || '(geen onderwerp)'}</em></p>
+<p>Automatische classificatie: <strong>${labelMap[suggestion] ?? suggestion}</strong></p>
+<p><a href="https://aerefund.com/admin/claims/${token}">Bekijk het dossier &rarr;</a></p>`,
+        text: `Automatische detectie: claim ${token} — ${labelMap[suggestion] ?? suggestion}\nVan: ${from}\nOnderwerp: ${subject}\nBekijk: https://aerefund.com/admin/claims/${token}`,
+      })
+    }
+
+    return NextResponse.json({ received: true, matched: true, token, suggestion: suggestion ?? undefined })
   } catch (err) {
     console.error('inbound-email webhook error:', err)
     return NextResponse.json({ error: 'Verwerking mislukt' }, { status: 500 })
   }
+}
+
+// ─── Airline response keyword analysis ──────────────────────────────────────
+
+function analyzeAirlineResponse(subject: string, body: string): string | null {
+  const text = `${subject} ${body}`.toLowerCase()
+
+  // Approved/payment patterns (Dutch + English + German)
+  if (/compensati.{0,20}(betaald|overgemaakt|uitgekeerd|paid|transferred|credited)/.test(text)) return 'approved_payment'
+  if (/akkoord|goedgekeurd|approved|accepted|genehmigt/.test(text)) return 'approved'
+
+  // Rejected patterns
+  if (/buitengewone omstandigh|extraordinary circumstance|au[sß]ergew[öo]hnlich/.test(text)) return 'rejected_force_majeure'
+  if (/afgewezen|rejected|denied|abgelehnt|niet.{0,10}in aanmerking/.test(text)) return 'rejected'
+
+  // Info request
+  if (/aanvullende (informatie|documenten)|additional (information|documents)|weitere (informationen|unterlagen)/.test(text)) return 'info_request'
+
+  // Counter offer
+  if (/aanbod|offer|angebot|tegemoetkoming|goodwill|voucher/.test(text)) return 'counter_offer'
+
+  return null
 }

@@ -58,6 +58,8 @@ type Claim = {
   payout_received_at: string | null
   payout_sent_at: string | null
   airline_emails: AirlineEmailEntry[] | null
+  escalated_at: string | null
+  escalated_to: string | null
 }
 
 type AirlineEmailEntry = {
@@ -416,6 +418,10 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
   const [aanvullenSending, setAanvullenSending] = useState(false)
   const [aanvullenResult, setAanvullenResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
+  // Escalatie
+  const [escalating, setEscalating] = useState(false)
+  const [escalateResult, setEscalateResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
   // Airline emails — manual entry form
   const [emailFrom, setEmailFrom] = useState('')
   const [emailSubject, setEmailSubject] = useState('')
@@ -536,6 +542,30 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
       body: JSON.stringify({ id }),
     })
     load()
+  }
+
+  async function handleEscalate() {
+    const email = window.prompt('E-mailadres juridisch partner:', '')
+    if (email === null) return // cancelled
+    setEscalating(true)
+    setEscalateResult(null)
+    try {
+      const res = await fetch(`/api/admin/claims/${token}/escalate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ legalPartnerEmail: email || undefined }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setEscalateResult({ ok: true, msg: `Dossier verstuurd naar ${data.sentTo}` })
+        load()
+      } else {
+        setEscalateResult({ ok: false, msg: data.error ?? 'Escalatie mislukt.' })
+      }
+    } catch {
+      setEscalateResult({ ok: false, msg: 'Netwerk fout bij escalatie.' })
+    }
+    setEscalating(false)
   }
 
   if (loading) return (
@@ -1040,6 +1070,81 @@ export default function ClaimDetailPage({ params }: { params: Promise<{ token: s
                 </p>
               </div>
             )}
+          </Card>
+
+          {/* Dossier & Escalatie */}
+          <Card title="Dossier & Escalatie">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <a
+                href={`/api/admin/claims/${token}/export`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  width: '100%', padding: '0.625rem', boxSizing: 'border-box',
+                  borderRadius: '8px', border: '1.5px solid #E5E7EB',
+                  background: '#F9FAFB', color: '#374151',
+                  fontWeight: 700, fontSize: '0.875rem',
+                  cursor: 'pointer', textDecoration: 'none',
+                  fontFamily: 'var(--font-sora)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 2v6M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M2 10.5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                Dossier downloaden
+              </a>
+
+              <button
+                onClick={handleEscalate}
+                disabled={escalating}
+                style={{
+                  width: '100%', padding: '0.625rem',
+                  borderRadius: '8px', border: 'none',
+                  background: escalating ? '#E5E7EB' : '#DC2626',
+                  color: escalating ? '#9CA3AF' : '#fff',
+                  fontWeight: 700, fontSize: '0.875rem',
+                  cursor: escalating ? 'default' : 'pointer',
+                  transition: 'all 0.15s',
+                  fontFamily: 'var(--font-sora)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1v8M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" transform="rotate(180 7 7)" />
+                  <path d="M2 12.5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                {escalating ? 'Escaleren…' : 'Escaleren naar juridisch partner'}
+              </button>
+
+              {escalateResult && (
+                <div style={{
+                  padding: '0.625rem 0.875rem', borderRadius: '8px',
+                  background: escalateResult.ok ? '#ECFDF5' : '#FEF2F2',
+                  border: `1px solid ${escalateResult.ok ? '#A7F3D0' : '#FECACA'}`,
+                }}>
+                  <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: escalateResult.ok ? '#059669' : '#DC2626' }}>
+                    {escalateResult.msg}
+                  </p>
+                </div>
+              )}
+
+              {claim.escalated_at && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: '8px',
+                  padding: '0.625rem 0.875rem',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                    <circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.4" />
+                    <path d="M5 7l1.5 1.5L9 5.5" stroke="#7C3AED" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span style={{ fontSize: '0.78rem', color: '#7C3AED', fontWeight: 500 }}>
+                    Geëscaleerd op {fmtDateTime(claim.escalated_at)} naar {claim.escalated_to ?? 'onbekend'}
+                  </span>
+                </div>
+              )}
+            </div>
           </Card>
 
           {/* Activity log */}
