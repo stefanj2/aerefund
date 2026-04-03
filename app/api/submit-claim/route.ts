@@ -686,12 +686,13 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Auto-generate consent PDF
+    // Auto-generate consent PDF (non-blocking: if this fails, claim + emails still proceed)
     const claimToken = token ?? null
+    let consentPdfBuffer: Buffer | null = null
     if (claimToken) {
       try {
         const { generateConsentPdf } = await import('@/lib/consent-pdf')
-        const pdfBuffer = await generateConsentPdf({
+        consentPdfBuffer = await generateConsentPdf({
           token: claimToken,
           first_name: body.firstName,
           last_name: body.lastName,
@@ -710,7 +711,7 @@ export async function POST(req: NextRequest) {
         if (db) {
           await db.storage.from('consent-pdfs').upload(
             `${claimToken}/akkoordverklaring.pdf`,
-            pdfBuffer,
+            consentPdfBuffer,
             { contentType: 'application/pdf', upsert: true }
           )
           await db.from('claims').update({ consent_pdf_filename: `${claimToken}/akkoordverklaring.pdf` }).eq('token', claimToken)
@@ -743,6 +744,12 @@ export async function POST(req: NextRequest) {
           { name: 'type', value: 'claim_confirmation' },
           { name: 'airline', value: body.flight.iataPrefix ?? 'unknown' },
         ],
+        ...(consentPdfBuffer ? {
+          attachments: [{
+            filename: 'akkoordverklaring.pdf',
+            content: consentPdfBuffer.toString('base64'),
+          }],
+        } : {}),
       },
       {
         from: `Aerefund <${FROM}>`,

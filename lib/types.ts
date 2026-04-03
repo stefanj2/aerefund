@@ -77,6 +77,25 @@ export type FlightData = {
   delayMinutes: number | null
   distanceKm: number | null
   found: boolean
+  weatherData?: {
+    conditions: string
+    temperature: number | null
+    windSpeed: number | null
+    windGust: number | null
+    precipitation: number | null
+    isExtreme: boolean
+    summary: string
+    source: string
+  }
+  atcData?: {
+    hasStrike: boolean
+    hasDisruption: boolean
+    reason: string | null
+    affectedCountry: string | null
+    summary: string
+    source: string
+    confidence: 'high' | 'medium' | 'low'
+  }
 }
 
 export type ClaimData = {

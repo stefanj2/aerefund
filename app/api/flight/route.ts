@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { haversineDistance } from '@/lib/airports'
 import { getAirlinePrefixFromFlightNumber, getAirlineConfig } from '@/lib/airlines'
 import { storePublicDelay } from '@/lib/airline-delays'
+import { getWeatherAtAirport } from '@/lib/weather'
+import { getAtcStatus } from '@/lib/atc-data'
 import type { FlightData } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -59,6 +61,30 @@ const DEMO_FLIGHTS: Record<string, Omit<FlightData, 'flightNumber' | 'date' | 't
   },
 }
 
+// Non-blocking weather enrichment — never fails the response
+async function enrichWithWeather(result: FlightData, date: string): Promise<void> {
+  try {
+    if (result.destination && result.scheduledArrival) {
+      const weather = await getWeatherAtAirport(
+        result.destination,
+        date,
+        result.actualArrival ?? result.scheduledArrival
+      )
+      if (weather) result.weatherData = weather
+    }
+  } catch { /* non-blocking */ }
+}
+
+// Non-blocking ATC strike/disruption enrichment
+async function enrichWithAtc(result: FlightData, date: string): Promise<void> {
+  try {
+    if (result.origin && result.destination) {
+      const atc = await getAtcStatus(result.origin, result.destination, date)
+      if (atc) result.atcData = atc
+    }
+  } catch { /* non-blocking */ }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const flightNumber = searchParams.get('flight')?.toUpperCase().replace(/\s/g, '') ?? ''
@@ -71,7 +97,10 @@ export async function GET(req: NextRequest) {
 
   // Return demo data for test flight numbers
   if (DEMO_FLIGHTS[flightNumber]) {
-    return NextResponse.json({ flightNumber, date, type, ...DEMO_FLIGHTS[flightNumber] })
+    const demoResult: FlightData = { flightNumber, date, type, ...DEMO_FLIGHTS[flightNumber] }
+    await enrichWithWeather(demoResult, date)
+    await enrichWithAtc(demoResult, date)
+    return NextResponse.json(demoResult)
   }
 
   const prefix = getAirlinePrefixFromFlightNumber(flightNumber)
@@ -80,6 +109,8 @@ export async function GET(req: NextRequest) {
   const aeroResult = await tryAeroDataBox(flightNumber, date, type, prefix)
   if (aeroResult) {
     storePublicDelay(aeroResult) // fire-and-forget — never blocks response
+    await enrichWithWeather(aeroResult, date)
+    await enrichWithAtc(aeroResult, date)
     return NextResponse.json(aeroResult)
   }
 
@@ -87,6 +118,8 @@ export async function GET(req: NextRequest) {
   const avResult = await tryAviationStack(flightNumber, date, type, prefix)
   if (avResult) {
     storePublicDelay(avResult)
+    await enrichWithWeather(avResult, date)
+    await enrichWithAtc(avResult, date)
     return NextResponse.json(avResult)
   }
 
