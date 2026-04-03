@@ -537,28 +537,61 @@ function TopBar({ color }: { color: string }) {
 
 function NavBar({ token, label }: { token: string; label: string }) {
   return (
-    <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', boxShadow: '0 1px 8px rgba(0,0,0,0.04)' }}>
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 1.25rem', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <div style={{
+      background: '#fff',
+      borderBottom: '1px solid #e8edf5',
+      boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+    }}>
+      <div style={{
+        maxWidth: '640px', margin: '0 auto', padding: '0 1.25rem',
+        height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        {/* Left: back + logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <a href="/" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '32px', height: '32px', borderRadius: '8px',
+            background: '#f8f9fb', border: '1px solid #e8edf5',
+            textDecoration: 'none', transition: 'background 0.15s',
+            flexShrink: 0,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L5 8l5 5" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
           <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{ height: '40px', overflow: 'hidden' }}>
+            <div style={{ height: '36px', overflow: 'hidden' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-aerefund.png" alt="Aerefund" style={{ height: '90px', marginTop: '-25px', width: 'auto', display: 'block' }} />
+              <img src="/logo-aerefund.png" alt="Aerefund" style={{ height: '82px', marginTop: '-23px', width: 'auto', display: 'block' }} />
             </div>
           </a>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.04em' }}>
+          <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 0.25rem' }} />
+          <span style={{
+            fontSize: '0.75rem', fontWeight: 700, color: '#0D1B2A',
+            fontFamily: 'var(--font-sora)', letterSpacing: '0.02em',
+          }}>
             {label}
           </span>
         </div>
+
+        {/* Right: token badge */}
         {token && (
-          <span style={{
-            fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em',
-            color: '#94a3b8', background: '#f8f9fb',
-            border: '1px solid #e2e8f0', borderRadius: '6px',
-            padding: '0.25rem 0.625rem', fontFamily: 'var(--font-sora)',
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: '#f8f9fb', border: '1px solid #e8edf5',
+            borderRadius: '8px', padding: '0.3rem 0.625rem 0.3rem 0.5rem',
           }}>
-            {token}
-          </span>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+              <rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="#94a3b8" strokeWidth="1.3" />
+              <path d="M5.5 5h5M5.5 7.5h5M5.5 10h3" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span style={{
+              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em',
+              color: '#64748b', fontFamily: 'var(--font-sora)',
+            }}>
+              {token}
+            </span>
+          </div>
         )}
       </div>
     </div>
