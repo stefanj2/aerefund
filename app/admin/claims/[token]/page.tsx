@@ -347,188 +347,256 @@ type ProcessStep = {
   id: string
   label: string
   description: string
-  action?: string       // what admin needs to do
-  actionDone?: string   // what was done
-  statusKey: string     // maps to STATUS_ORDER
-  checkFn?: (c: Claim) => boolean  // extra completion check beyond status
+  action?: string
+  actionDone?: string
+  statusKey: string
+  icon: string  // SVG path data
+  checkFn?: (c: Claim) => boolean
+}
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+  intake: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M13 2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="1.5"/><path d="M6 6h6M6 9h6M6 12h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  docs: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 11v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5l4 4v4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M10 3v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M7 10h4M7 12.5h2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  invoice: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3" y="2" width="12" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M9 6v4M7.5 8.5h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6.5 13h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  claim_letter: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4.5l7 5 7-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="3" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>,
+  wait_airline: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M9 5v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  result: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l2.1 4.3 4.9.7-3.5 3.4.8 4.6L9 12.8 4.7 15l.8-4.6L2 7l4.9-.7L9 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
+  payout: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M9 5.5v7M7 7a2 2 0 0 1 2-1.5c1.66 0 2.5 1 2.5 2s-1 2-2.5 2S7 10.5 7 11.5a2 2 0 0 0 2 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
 }
 
 const PROCESS_STEPS: ProcessStep[] = [
   {
-    id: 'intake', label: 'Intake', statusKey: 'submitted',
+    id: 'intake', label: 'Intake ontvangen', statusKey: 'submitted', icon: 'intake',
     description: 'Klant heeft het formulier ingevuld en de claim ingediend.',
-    actionDone: 'Claim ontvangen',
+    actionDone: 'Claim ontvangen en geregistreerd',
   },
   {
-    id: 'docs', label: 'Documenten', statusKey: 'submitted',
-    description: 'Boardingpass, ID-kopie en IBAN verzamelen.',
-    action: 'Stuur aanvullen-email als documenten ontbreken',
-    actionDone: 'Alle documenten ontvangen',
+    id: 'docs', label: 'Documenten verzamelen', statusKey: 'submitted', icon: 'docs',
+    description: 'Boardingpass, ID-kopie en IBAN nodig voor het dossier.',
+    action: 'Verstuur aanvullen-email om ontbrekende documenten op te vragen',
+    actionDone: 'Alle benodigde documenten ontvangen',
     checkFn: (c) => !!c.iban && !!c.boarding_pass_filename && !!c.id_copy_filename,
   },
   {
-    id: 'invoice', label: 'Factuur', statusKey: 'invoice_sent',
+    id: 'invoice', label: 'Factuur & betaling', statusKey: 'invoice_sent', icon: 'invoice',
     description: 'Servicenota van €42 versturen en betaling afwachten.',
-    action: 'Factuur versturen via email',
-    actionDone: 'Factuur betaald',
+    action: 'Verstuur factuur via email — wacht op betaling',
+    actionDone: 'Factuur betaald door klant',
   },
   {
-    id: 'claim_letter', label: 'Claimbrief', statusKey: 'claim_filed',
-    description: 'Formele cessie-claimbrief (art. 3:94 BW) naar airline sturen.',
-    action: 'Klik "Verstuur claimbrief" hieronder',
-    actionDone: 'Claimbrief verstuurd naar airline',
+    id: 'claim_letter', label: 'Claimbrief naar airline', statusKey: 'claim_filed', icon: 'claim_letter',
+    description: 'Formele cessie-claimbrief (art. 3:94 BW) met bijlagen naar de airline sturen.',
+    action: 'Klik "Verstuur claimbrief" in het actiepaneel rechts',
+    actionDone: 'Claimbrief verstuurd met cessie-akte, boardingpass en ID',
   },
   {
-    id: 'wait_airline', label: 'Wachten op airline', statusKey: 'in_progress',
-    description: 'Airline heeft 14 dagen om te reageren. Automatische herinneringen na 14/30/60 dagen.',
-    action: 'Wachten — escalatie-cron stuurt automatisch herinneringen',
-    actionDone: 'Airline heeft gereageerd',
+    id: 'wait_airline', label: 'Reactie airline afwachten', statusKey: 'in_progress', icon: 'wait_airline',
+    description: 'Airline heeft 14 dagen om te reageren. Automatische herinneringen na 14, 30 en 60 dagen.',
+    action: 'Automatische escalatie actief — controleer bij nieuwe airline-reacties',
+    actionDone: 'Airline heeft gereageerd op de claim',
   },
   {
-    id: 'result', label: 'Uitkomst', statusKey: 'won',
-    description: 'Claim beoordelen: gewonnen, afgewezen of escaleren naar juridisch partner.',
-    action: 'Wijzig status naar "Gewonnen" of "Afgewezen"',
-    actionDone: 'Claim gewonnen',
+    id: 'result', label: 'Uitkomst beoordelen', statusKey: 'won', icon: 'result',
+    description: 'Beoordeel het resultaat: gewonnen, afgewezen of escaleren naar juridisch partner.',
+    action: 'Wijzig status naar "Gewonnen" of "Afgewezen" — of escaleer het dossier',
+    actionDone: 'Claim gewonnen — compensatie goedgekeurd door airline',
   },
   {
-    id: 'payout', label: 'Uitbetaling', statusKey: 'compensation_paid',
+    id: 'payout', label: 'Uitbetaling aan klant', statusKey: 'compensation_paid', icon: 'payout',
     description: 'Compensatie ontvangen van airline, netto doorstorten naar klant (bruto − €42 − 25%).',
-    action: 'Registreer ontvangst en stuur netto bedrag naar klant',
-    actionDone: 'Klant uitbetaald',
+    action: 'Registreer bruto ontvangst — bereken netto en maak over naar klant-IBAN',
+    actionDone: 'Nettobedrag overgemaakt naar klant',
   },
 ]
 
 function ProcessFlow({ claim }: { claim: Claim }) {
   const statusIdx = STATUS_ORDER.indexOf(claim.status)
-  // Special statuses outside happy path
   const isRejected = claim.status === 'rejected'
   const isAppeal = claim.status === 'appeal_filed'
   const isClosed = claim.status === 'closed'
   const isOffTrack = isRejected || isAppeal || isClosed
 
-  function getStepState(step: ProcessStep, i: number): 'done' | 'active' | 'pending' {
+  function getStepState(step: ProcessStep, _i: number): 'done' | 'active' | 'pending' {
     const stepIdx = STATUS_ORDER.indexOf(step.statusKey)
-
-    // Special: docs step is about document completeness, not status
     if (step.id === 'docs') {
       if (step.checkFn?.(claim)) return 'done'
-      if (statusIdx >= STATUS_ORDER.indexOf('invoice_sent')) return 'done' // moved past it
+      if (statusIdx >= STATUS_ORDER.indexOf('invoice_sent')) return 'done'
       if (statusIdx >= 0) return 'active'
       return 'pending'
     }
-
     if (isOffTrack && stepIdx > statusIdx) return 'pending'
     if (statusIdx > stepIdx) return 'done'
     if (statusIdx === stepIdx) return 'active'
     return 'pending'
   }
 
-  const stateColors = {
-    done: { dot: '#059669', bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-    active: { dot: '#FF6B2B', bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412' },
-    pending: { dot: '#D1D5DB', bg: '#F9FAFB', border: '#E5E7EB', text: '#9CA3AF' },
-  }
+  const doneCount = PROCESS_STEPS.filter((s, i) => getStepState(s, i) === 'done').length
+  const progress = Math.round((doneCount / PROCESS_STEPS.length) * 100)
 
   return (
     <div>
+      {/* Progress bar */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280' }}>
+            {doneCount} van {PROCESS_STEPS.length} stappen afgerond
+          </span>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: progress === 100 ? '#059669' : '#FF6B2B', fontFamily: 'var(--font-sora)' }}>
+            {progress}%
+          </span>
+        </div>
+        <div style={{ height: '6px', background: '#F3F4F6', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: '3px',
+            width: `${progress}%`,
+            background: progress === 100
+              ? 'linear-gradient(90deg, #059669, #10B981)'
+              : 'linear-gradient(90deg, #FF6B2B, #F59E0B)',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+      </div>
+
       {/* Off-track banner */}
       {isOffTrack && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          display: 'flex', alignItems: 'center', gap: '0.625rem',
           background: isRejected ? '#FEF2F2' : '#FFFBEB',
           border: `1px solid ${isRejected ? '#FECACA' : '#FDE68A'}`,
-          borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem',
+          borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem',
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="6.5" stroke={isRejected ? '#DC2626' : '#D97706'} strokeWidth="1.5" />
-            <path d="M8 5v3.5M8 10.5v.5" stroke={isRejected ? '#DC2626' : '#D97706'} strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: isRejected ? '#DC2626' : '#D97706' }}>
-            {isRejected && 'Afgewezen door airline — overweeg escalatie naar juridisch partner.'}
-            {isAppeal && 'Bezwaar ingediend — wachten op reactie.'}
-            {isClosed && 'Dossier gesloten.'}
-          </span>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+            background: isRejected ? '#FEE2E2' : '#FEF3C7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="6.5" stroke={isRejected ? '#DC2626' : '#D97706'} strokeWidth="1.5" />
+              <path d="M8 5v3.5M8 10.5v.5" stroke={isRejected ? '#DC2626' : '#D97706'} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: isRejected ? '#991B1B' : '#92400E' }}>
+              {isRejected && 'Claim afgewezen door airline'}
+              {isAppeal && 'Bezwaar ingediend'}
+              {isClosed && 'Dossier gesloten'}
+            </p>
+            <p style={{ margin: '0.125rem 0 0', fontSize: '0.75rem', color: isRejected ? '#DC2626' : '#D97706' }}>
+              {isRejected && 'Overweeg escalatie naar juridisch partner of dien bezwaar in.'}
+              {isAppeal && 'Wachten op reactie van de geschillencommissie of rechter.'}
+              {isClosed && 'Dit dossier is definitief afgesloten.'}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Steps */}
       {PROCESS_STEPS.map((step, i) => {
         const state = getStepState(step, i)
-        const colors = stateColors[state]
         const isLast = i === PROCESS_STEPS.length - 1
 
+        const palette = {
+          done:    { iconBg: '#059669', iconColor: '#fff', cardBg: '#fff', cardBorder: '#D1FAE5', labelColor: '#111827', descColor: '#6B7280', lineBg: '#A7F3D0' },
+          active:  { iconBg: '#FFF7ED', iconColor: '#FF6B2B', cardBg: '#FFFBEB', cardBorder: '#FED7AA', labelColor: '#111827', descColor: '#92400E', lineBg: '#E5E7EB' },
+          pending: { iconBg: '#F9FAFB', iconColor: '#D1D5DB', cardBg: '#FAFAFA', cardBorder: '#F3F4F6', labelColor: '#D1D5DB', descColor: '#D1D5DB', lineBg: '#F3F4F6' },
+        }
+        const p = palette[state]
+
         return (
-          <div key={step.id} style={{ display: 'flex', gap: '0.875rem', position: 'relative' }}>
-            {/* Vertical line + dot */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '24px' }}>
+          <div key={step.id} style={{ display: 'flex', gap: '0.75rem' }}>
+            {/* Left: icon + line */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: '36px' }}>
               <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
-                background: state === 'done' ? colors.dot : '#fff',
-                border: `2.5px solid ${colors.dot}`,
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: p.iconBg, color: p.iconColor,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: state === 'active' ? `0 0 0 4px ${colors.bg}` : 'none',
-                transition: 'all 0.2s', flexShrink: 0, position: 'relative', zIndex: 1,
+                boxShadow: state === 'active' ? '0 0 0 3px #FFF7ED, 0 0 0 5px #FED7AA' : state === 'done' ? '0 1px 2px rgba(5,150,105,0.15)' : 'none',
+                transition: 'all 0.2s', position: 'relative', zIndex: 1,
               }}>
                 {state === 'done' ? (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8l3.5 3.5 6.5-7" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                ) : state === 'active' ? (
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: colors.dot }} />
                 ) : (
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D1D5DB' }} />
+                  STEP_ICONS[step.id]
                 )}
               </div>
               {!isLast && (
                 <div style={{
-                  width: '2px', flex: 1, minHeight: '16px',
-                  background: state === 'done' ? '#A7F3D0' : '#E5E7EB',
-                  transition: 'background 0.2s',
+                  width: '2px', flex: 1, minHeight: '12px',
+                  background: p.lineBg, transition: 'background 0.2s',
                 }} />
               )}
             </div>
 
-            {/* Content */}
-            <div style={{ flex: 1, paddingBottom: isLast ? 0 : '0.875rem', marginTop: '-2px' }}>
+            {/* Right: content card */}
+            <div style={{ flex: 1, paddingBottom: isLast ? 0 : '0.5rem', marginTop: '2px' }}>
               <div style={{
-                background: colors.bg, border: `1px solid ${colors.border}`,
-                borderRadius: '8px', padding: '0.75rem 1rem',
+                background: p.cardBg, border: `1px solid ${p.cardBorder}`,
+                borderRadius: '10px', padding: '0.75rem 1rem',
+                transition: 'all 0.2s',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <span style={{
-                    fontSize: '0.8125rem', fontWeight: 700, color: state === 'pending' ? '#9CA3AF' : '#111827',
-                  }}>
-                    {step.label}
-                  </span>
+                {/* Header row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.625rem', fontWeight: 700, color: p.descColor, fontFamily: 'var(--font-sora)' }}>
+                      STAP {i + 1}
+                    </span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: p.labelColor }}>
+                      {step.label}
+                    </span>
+                  </div>
                   {state === 'done' && (
                     <span style={{
-                      fontSize: '0.625rem', fontWeight: 700, color: '#059669',
+                      fontSize: '0.6rem', fontWeight: 700, color: '#059669',
                       background: '#ECFDF5', border: '1px solid #A7F3D0',
-                      borderRadius: '10px', padding: '0.1rem 0.5rem',
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
+                      borderRadius: '10px', padding: '0.15rem 0.5rem',
+                      textTransform: 'uppercase', letterSpacing: '0.05em',
                     }}>Afgerond</span>
                   )}
                   {state === 'active' && (
                     <span style={{
-                      fontSize: '0.625rem', fontWeight: 700, color: '#9A3412',
+                      fontSize: '0.6rem', fontWeight: 700, color: '#9A3412',
                       background: '#FFF7ED', border: '1px solid #FED7AA',
-                      borderRadius: '10px', padding: '0.1rem 0.5rem',
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
-                    }}>Actief</span>
+                      borderRadius: '10px', padding: '0.15rem 0.5rem',
+                      textTransform: 'uppercase', letterSpacing: '0.05em',
+                    }}>Actie nodig</span>
                   )}
                 </div>
-                <p style={{ margin: '0 0 0.25rem', fontSize: '0.78rem', color: colors.text, lineHeight: 1.5 }}>
+
+                {/* Description */}
+                <p style={{ margin: 0, fontSize: '0.75rem', color: p.descColor, lineHeight: 1.55 }}>
                   {step.description}
                 </p>
+
+                {/* Action or result */}
                 {state === 'done' && step.actionDone && (
-                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
-                    {step.actionDone}
-                  </p>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.375rem',
+                    marginTop: '0.5rem', padding: '0.375rem 0.625rem',
+                    background: '#ECFDF5', borderRadius: '6px',
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5.5" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+                      {step.actionDone}
+                    </span>
+                  </div>
                 )}
                 {state === 'active' && step.action && (
-                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#9A3412', fontWeight: 600 }}>
-                    Actie: {step.action}
-                  </p>
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '0.375rem',
+                    marginTop: '0.5rem', padding: '0.5rem 0.625rem',
+                    background: '#FFF7ED', borderRadius: '6px', border: '1px solid #FED7AA',
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, marginTop: '1px' }}>
+                      <path d="M6 1v6.5M6 9.5v.5" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    <span style={{ fontSize: '0.72rem', color: '#92400E', fontWeight: 600, lineHeight: 1.45 }}>
+                      {step.action}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
