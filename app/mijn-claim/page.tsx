@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import SiteNav from '@/components/SiteNav'
 
 type ClaimData = {
   found: boolean
@@ -125,8 +126,7 @@ function TokenForm() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fb', fontFamily: 'var(--font-inter)' }}>
-      <TopBar color="#94a3b8" />
-      <NavBar token="" label="Mijn Claim" />
+      <SiteNav />
       <main style={{ maxWidth: '420px', margin: '0 auto', padding: '4rem 1.25rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
@@ -226,8 +226,7 @@ function MijnClaimContent() {
   // Not found
   if (!claim.found) return (
     <div style={{ minHeight: '100vh', background: '#f8f9fb', fontFamily: 'var(--font-inter)' }}>
-      <TopBar color="#1f3148" />
-      <NavBar token="" label="Mijn Claim" />
+      <SiteNav />
       <div style={{ maxWidth: '420px', margin: '5rem auto', padding: '0 1.25rem', textAlign: 'center' }}>
         <div style={{
           width: '56px', height: '56px', borderRadius: '14px', margin: '0 auto 1.25rem',
@@ -262,8 +261,7 @@ function MijnClaimContent() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fb', fontFamily: 'var(--font-inter)' }}>
-      <TopBar color={sColor} />
-      <NavBar token={claim.token} label="Mijn Claim" />
+      <SiteNav />
 
       <main style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem 1.25rem 5rem' }}>
 
@@ -531,72 +529,6 @@ function DocRow({ label, done }: { label: string; done: boolean }) {
   )
 }
 
-function TopBar({ color }: { color: string }) {
-  return <div style={{ height: '3px', background: color, transition: 'background 0.4s' }} />
-}
-
-function NavBar({ token, label }: { token: string; label: string }) {
-  return (
-    <div style={{
-      background: '#fff',
-      borderBottom: '1px solid #e8edf5',
-      boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{
-        padding: '0 1.5rem',
-        height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        {/* Left: back + logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <a href="/" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '32px', height: '32px', borderRadius: '8px',
-            background: '#f8f9fb', border: '1px solid #e8edf5',
-            textDecoration: 'none', transition: 'background 0.15s',
-            flexShrink: 0,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{ height: '36px', overflow: 'hidden' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-aerefund.png" alt="Aerefund" style={{ height: '82px', marginTop: '-23px', width: 'auto', display: 'block' }} />
-            </div>
-          </a>
-          <div style={{ width: '1px', height: '20px', background: '#e2e8f0', margin: '0 0.25rem' }} />
-          <span style={{
-            fontSize: '0.75rem', fontWeight: 700, color: '#0D1B2A',
-            fontFamily: 'var(--font-sora)', letterSpacing: '0.02em',
-          }}>
-            {label}
-          </span>
-        </div>
-
-        {/* Right: token badge */}
-        {token && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            background: '#f8f9fb', border: '1px solid #e8edf5',
-            borderRadius: '8px', padding: '0.3rem 0.625rem 0.3rem 0.5rem',
-          }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-              <rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="#94a3b8" strokeWidth="1.3" />
-              <path d="M5.5 5h5M5.5 7.5h5M5.5 10h3" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-            <span style={{
-              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em',
-              color: '#64748b', fontFamily: 'var(--font-sora)',
-            }}>
-              {token}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 /* ─── Page Export ───────────────────────────────────────────────── */
 export default function MijnClaimPage() {
