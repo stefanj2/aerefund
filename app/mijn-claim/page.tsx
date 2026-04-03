@@ -543,7 +543,7 @@ function NavBar({ token, label }: { token: string; label: string }) {
       boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
     }}>
       <div style={{
-        maxWidth: '640px', margin: '0 auto', padding: '0 1.25rem',
+        padding: '0 1.5rem',
         height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         {/* Left: back + logo */}
