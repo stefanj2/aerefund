@@ -369,7 +369,7 @@ const [postalCode, setPostalCode]   = useState('')
                 <p style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                   Naam &amp; contact
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div>
                     <Label>Voornaam *</Label>
                     <input className="input-field" type="text" value={firstName}
@@ -412,7 +412,7 @@ const [postalCode, setPostalCode]   = useState('')
                 </p>
 
                 {/* Postcode + huisnummer + toevoeging */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div>
                     <Label>Postcode *</Label>
                     <input className="input-field" type="text" value={postalCode}
@@ -470,7 +470,7 @@ const [postalCode, setPostalCode]   = useState('')
 
                 {/* Straat + woonplaats — alleen tonen als er inhoud is of bij fout */}
                 {(street || city || lookupState === 'notfound' || lookupState === 'error') && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <div>
                       <Label>Straatnaam *</Label>
                       <input className="input-field" type="text" value={street}
@@ -553,7 +553,7 @@ const [postalCode, setPostalCode]   = useState('')
                       }}>
                         Medepassagier {i + 1}
                       </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                      <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                         <div>
                           <Label>Voornaam</Label>
                           <input className="input-field" type="text" value={p.firstName}

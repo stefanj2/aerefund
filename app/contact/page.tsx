@@ -124,7 +124,7 @@ export default function ContactPage() {
           <h2 style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1rem', paddingBottom: '0.625rem', borderBottom: '1.5px solid var(--border)' }}>
             Misschien staat je antwoord hier al
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
             {[
               { label: 'Veelgestelde vragen', href: '/faq', desc: 'Kosten, doorlooptijden, vluchten' },
               { label: 'Passagiersrechten', href: '/passagiersrechten', desc: 'Wanneer heb je recht op compensatie?' },

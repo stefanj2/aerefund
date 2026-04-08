@@ -226,14 +226,14 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
         position: 'fixed',
         top: dropdownRect.top,
         left: dropdownRect.left,
-        width: dropdownRect.width,
+        width: `min(${dropdownRect.width}px, calc(100vw - 2rem))`,
         background: '#fff',
         border: '1px solid var(--border)',
         borderRadius: '8px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
         zIndex: 9999,
         overflow: 'hidden',
-        maxHeight: '320px',
+        maxHeight: 'min(320px, 50vh)',
         overflowY: 'auto',
       }}
     >

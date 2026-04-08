@@ -440,7 +440,7 @@ function TrustBadges() {
 // ── Main export ────────────────────────────────────────────────────────────
 export default function FunnelSidebar({ step, airline, review }: Props) {
   return (
-    <aside style={{ position: 'sticky', top: '76px' }}>
+    <aside className="hide-mobile" style={{ position: 'sticky', top: '76px' }}>
       {step === 1 && <Step1Sidebar />}
       {step === 3 && <Step3Sidebar airline={airline} review={review} />}
       {step === 4 && <Step4Sidebar />}

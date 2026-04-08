@@ -56,7 +56,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
           }}>
             Wat is er mis met je vlucht?
           </p>
-          <div style={{
+          <div className="wrap-mobile" style={{
             display: 'inline-flex',
             background: '#f0f4f8',
             borderRadius: '10px',
@@ -69,7 +69,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
                 type="button"
                 onClick={() => setType(value)}
                 style={{
-                  padding: '0.375rem 1rem',
+                  padding: '0.5rem 1rem',
                   borderRadius: '7px',
                   border: 'none',
                   background: type === value ? '#fff' : 'transparent',
@@ -90,7 +90,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
         </div>
 
         {/* Luchthavens + knop */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+        <div className="stack-mobile" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
           {/* Vertrek */}
           <div
             style={{ ...fieldBase, flex: 1 }}
@@ -111,12 +111,12 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <span className="hide-mobile" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
               <path d="M1 4h14M11 1l4 3-4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M19 10H5M9 7l-4 3 4 3" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </div>
+          </span>
 
           {/* Aankomst */}
           <div
@@ -142,6 +142,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
           <button
             type="submit"
             disabled={loading}
+            className="full-width-mobile"
             style={{
               flexShrink: 0,
               background: 'var(--blue)',

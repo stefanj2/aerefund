@@ -149,7 +149,7 @@ export default function PassagiersrechtenPage() {
             </Link>
 
             {/* Trust badges */}
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {[
                 'Geldig in alle 27 EU-landen',
                 'Van kracht sinds 2005',
@@ -196,7 +196,7 @@ export default function PassagiersrechtenPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {RIGHTS.map((r, i) => (
-              <div key={r.num} style={{
+              <div key={r.num} className="grid-responsive-3" style={{
                 display: 'grid',
                 gridTemplateColumns: '72px 1fr auto',
                 gap: '0 2rem',
@@ -271,7 +271,7 @@ export default function PassagiersrechtenPage() {
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             {AMOUNTS.map((a) => (
               <div key={a.amount} style={{
                 background: a.featured ? '#fff' : '#fff',
@@ -327,7 +327,7 @@ export default function PassagiersrechtenPage() {
       {/* ── Checklist & uitzonderingen ────────────────────────────────────────── */}
       <section style={{ background: '#fff', padding: '5rem 0', borderBottom: '1px solid var(--border)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'start' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
 
             {/* Checklist */}
             <div>

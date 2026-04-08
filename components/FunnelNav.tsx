@@ -123,7 +123,7 @@ export default function FunnelNav({ step, progress, flightInfo, badge }: Props) 
         </div>
 
         {/* Right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+        <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           {badge}
           {flightInfo ? (
             <div style={{ textAlign: 'right' }}>

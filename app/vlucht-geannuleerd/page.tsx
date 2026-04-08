@@ -340,7 +340,7 @@ export default function VluchtGeannuleerdPage() {
               <HeroSearchForm defaultType="geannuleerd" />
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {[
                 'Gratis check · €42 bij indiening',
                 'Geannuleerd zonder waarschuwing?',
@@ -382,7 +382,7 @@ export default function VluchtGeannuleerdPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '3.5rem' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '3.5rem' }}>
             {[
               { num: '98%',   sup: '*', label: 'Gewonnen cases',         note: '* bij kwalificerende claims',    accent: 'var(--green)' },
               { num: '5.000+', sup: '', label: 'Passagiers geholpen',    note: 'Ongeacht de ticketprijs',        accent: 'var(--blue)' },
@@ -529,7 +529,7 @@ export default function VluchtGeannuleerdPage() {
               Eenvoudig, transparant en zonder financieel risico. Jij regelt niets — wij halen je geld op.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
             {WHY_ITEMS.map((item) => (
               <div key={item.title} className="why-card">
                 {item.visual}
@@ -569,7 +569,7 @@ export default function VluchtGeannuleerdPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2.5rem' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2.5rem' }}>
             {HELPS_ITEMS.map((item) => (
               <div key={item.title}>
                 <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.875rem' }}>
@@ -647,7 +647,7 @@ export default function VluchtGeannuleerdPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
             {STEPS.map((step) => (
               <div key={step.num} className="step-card" style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>{step.icon}</div>
@@ -730,7 +730,7 @@ export default function VluchtGeannuleerdPage() {
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#080E1C', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '3.5rem 0 2rem' }}>
         <div className="container-wide">
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
             <div>
               <div style={{ height: '40px', overflow: 'hidden', marginBottom: '1rem', mixBlendMode: 'screen' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

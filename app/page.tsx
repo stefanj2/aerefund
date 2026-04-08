@@ -327,7 +327,7 @@ export default function Home() {
         - Content (label + H1 + subtext + form + trust) sits over the left ~55%
         - No split-column — single overlay
       */}
-      <section id="form" style={{ position: 'relative', overflow: 'hidden', minHeight: '620px', background: '#f0f4fa' }}>
+      <section id="form" className="section-padding" style={{ position: 'relative', overflow: 'hidden', minHeight: '620px', background: '#f0f4fa' }}>
 
         {/* Background photo — fills the section, positioned right */}
         <Image
@@ -346,7 +346,7 @@ export default function Home() {
 
         {/* Content */}
         <div className="container-wide" style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{ maxWidth: '600px', padding: '5rem 0 5.5rem' }}>
+          <div className="section-padding" style={{ maxWidth: '600px', padding: '5rem 0 5.5rem' }}>
 
             {/* Breadcrumb label */}
             <p style={{ fontSize: '0.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
@@ -377,7 +377,7 @@ export default function Home() {
             </div>
 
             {/* Trust badges — blue circle checkmarks */}
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '1.5rem' }}>
+            <div className="wrap-mobile gap-mobile-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
               {[
                 'Gratis check · €42 bij indiening',
                 'Compensatie voor oude vluchten',
@@ -386,7 +386,6 @@ export default function Home() {
                 <span key={text} style={{
                   display: 'flex', alignItems: 'center', gap: '0.5rem',
                   fontSize: '0.875rem', color: 'var(--text-sub)', fontWeight: 500,
-                  whiteSpace: 'nowrap',
                 }}>
                   <span style={{
                     width: '20px', height: '20px', borderRadius: '50%',
@@ -408,7 +407,7 @@ export default function Home() {
 
 
       {/* ── Stats + Airlines ─────────────────────────────────────────────── */}
-      <section style={{ background: '#eef5ff', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '5rem 0' }}>
+      <section className="section-padding" style={{ background: '#eef5ff', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '5rem 0' }}>
         <div className="container-wide">
 
           {/* Header */}
@@ -423,7 +422,7 @@ export default function Home() {
           </div>
 
           {/* Stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '3.5rem' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '3.5rem' }}>
             {[
               { num: '98%', sup: '*', label: 'Gewonnen cases', note: '* bij kwalificerende claims', accent: 'var(--green)' },
               { num: '5.000+', sup: '',  label: 'Passagiers geholpen', note: 'Ongeacht de ticketprijs', accent: 'var(--blue)' },
@@ -508,7 +507,7 @@ export default function Home() {
             }}>
               &ldquo;Ik wist niet eens dat ik recht had op geld. KLM mailde dat de vertraging door &lsquo;buitengewone omstandigheden&rsquo; was. Ik geloofde ze. Via een vriendin hoorde ik van Aerefund — twee minuten later zag ik dat we recht hadden op €1.200.&rdquo;
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="wrap-mobile gap-mobile-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0, background: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-sora)', fontWeight: 800, fontSize: '0.875rem', color: '#fff' }}>M</div>
               <div>
                 <p style={{ fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.875rem', color: 'var(--navy)', margin: 0 }}>Marjolein, 34</p>
@@ -521,8 +520,8 @@ export default function Home() {
           </div>
 
           {/* Timeline — clean table style */}
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: '560px' }}>
+          <div>
+            <div className="stack-mobile gap-mobile-sm" style={{ display: 'flex', alignItems: 'flex-start' }}>
               {[
                 { label: 'Dag 1', text: 'Vluchtnummer ingevuld, €400 p.p. berekend', final: false },
                 { label: 'Dag 2', text: 'Claim ingediend, factuur €42 verstuurd', final: false },
@@ -578,7 +577,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
             {WHY_ITEMS.map((item) => (
               <div key={item.title} className="why-card">
                 {item.visual}
@@ -620,7 +619,7 @@ export default function Home() {
           </div>
 
           {/* 3-col layout: text | phone | text */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '2.5rem', alignItems: 'start' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '2.5rem', alignItems: 'start' }}>
             {/* Left 2 items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.25rem' }}>
               {HELPS_ITEMS.slice(0, 2).map((item) => (
@@ -637,7 +636,7 @@ export default function Home() {
             </div>
 
             {/* Center: phone mockup */}
-            <div style={{
+            <div className="hide-mobile" style={{
               width: '210px',
               background: '#fff',
               borderRadius: '28px',
@@ -768,7 +767,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
+          <div className="grid-responsive-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '880px', margin: '0 auto' }}>
             {STEPS.map((step) => (
               <div key={step.num} className="step-card" style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>{step.icon}</div>
@@ -859,7 +858,7 @@ export default function Home() {
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#080E1C', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '3.5rem 0 2rem' }}>
         <div className="container-wide">
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
+          <div className="grid-responsive-2" style={{ display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
             {/* Brand */}
             <div>
               <div style={{ height: '40px', overflow: 'hidden', marginBottom: '1rem', mixBlendMode: 'screen' }}>

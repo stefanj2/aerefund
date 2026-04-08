@@ -574,3 +574,22 @@ input[type="date"].input-field {
   background-repeat: no-repeat;
   background-position: center;
 }
+
+/* ── Mobile Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .section-padding { padding-top: 3rem !important; padding-bottom: 3rem !important; min-height: auto !important; }
+  .grid-responsive-3 { grid-template-columns: 1fr !important; }
+  .grid-responsive-2 { grid-template-columns: 1fr !important; }
+  .hide-mobile { display: none !important; }
+  .stack-mobile { flex-direction: column !important; min-width: 0 !important; }
+  .wrap-mobile { flex-wrap: wrap !important; }
+  .full-width-mobile { width: 100% !important; }
+  .gap-mobile-sm { gap: 0.75rem !important; }
+  .text-center-mobile { text-align: center !important; }
+  .container-wide { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+@media (max-width: 768px) {
+  .hide-tablet { display: none !important; }
+  .show-mobile { display: flex !important; }
+}
