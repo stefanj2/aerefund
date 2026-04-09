@@ -142,6 +142,7 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
   const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
+  const mobileOverlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -244,16 +245,17 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
     if (e.key === 'Escape') { setOpen(false); setQuery('') }
   }
 
-  // Close on outside click
+  // Close on outside click (but NOT when clicking inside the mobile overlay portal)
   useEffect(() => {
-    function onMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setQuery('')
-      }
+    function onPointerDown(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node
+      if (containerRef.current?.contains(target)) return
+      if (mobileOverlayRef.current?.contains(target)) return
+      setOpen(false)
+      setQuery('')
     }
-    document.addEventListener('mousedown', onMouseDown)
-    return () => document.removeEventListener('mousedown', onMouseDown)
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
   }, [])
 
   // Update position on scroll/resize/keyboard while open
@@ -285,6 +287,7 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
   // ── Mobile full-screen overlay ─────────────────────────
   const mobileOverlay = open && isMobile && (
     <div
+      ref={mobileOverlayRef}
       style={{
         position: 'fixed',
         inset: 0,
@@ -391,7 +394,8 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
           <button
             key={ap.iata}
             type="button"
-            onClick={() => handleSelect(ap)}
+            onMouseDown={(e) => { e.preventDefault(); handleSelect(ap) }}
+            onTouchStart={(e) => { e.preventDefault(); handleSelect(ap) }}
             style={{
               display: 'flex',
               alignItems: 'center',
