@@ -328,7 +328,7 @@ export default function Home() {
         - Content (label + H1 + subtext + form + trust) sits over the left ~55%
         - No split-column — single overlay
       */}
-      <section id="form" className="section-padding" style={{ position: 'relative', overflow: 'hidden', minHeight: '620px', background: '#f0f4fa' }}>
+      <section id="form" className="hero-section" style={{ position: 'relative', overflow: 'hidden', minHeight: '620px', background: '#f0f4fa' }}>
 
         {/* Background photo — fills the section, positioned right */}
         <Image
@@ -347,7 +347,7 @@ export default function Home() {
 
         {/* Content */}
         <div className="container-wide" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="section-padding" style={{ maxWidth: '600px', padding: '5rem 0 5.5rem' }}>
+          <div className="hero-content" style={{ maxWidth: '600px', padding: '5rem 0 5.5rem' }}>
 
             {/* Breadcrumb label */}
             <p style={{ fontSize: '0.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
