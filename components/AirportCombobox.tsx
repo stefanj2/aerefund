@@ -120,7 +120,7 @@ function countryName(code: string): string {
   return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
-type DropdownRect = { top: number; left: number; width: number }
+type DropdownRect = { top: number; left: number; width: number; maxHeight: number; placement: 'below' | 'above' }
 
 type Props = {
   value: string
@@ -160,8 +160,37 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
 
   const updateRect = useCallback(() => {
     const rect = containerRef.current?.getBoundingClientRect()
-    if (rect) {
-      setDropdownRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    if (!rect) return
+
+    // Use visualViewport on iOS to account for on-screen keyboard
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    const viewportHeight = vv?.height ?? window.innerHeight
+    const viewportOffsetTop = vv?.offsetTop ?? 0
+
+    const spaceBelow = (viewportHeight + viewportOffsetTop) - rect.bottom
+    const spaceAbove = rect.top - viewportOffsetTop
+    const margin = 16
+
+    // If there's not enough space below (e.g. iOS keyboard open) AND there's more space above,
+    // flip the dropdown to open above the input
+    const openAbove = spaceBelow < 180 && spaceAbove > spaceBelow
+
+    if (openAbove) {
+      setDropdownRect({
+        top: Math.max(viewportOffsetTop + margin, rect.top - 4 - Math.min(320, spaceAbove - margin)),
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.min(320, spaceAbove - margin),
+        placement: 'above',
+      })
+    } else {
+      setDropdownRect({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.min(320, spaceBelow - margin),
+        placement: 'below',
+      })
     }
   }, [])
 
@@ -200,15 +229,21 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [])
 
-  // Update position on scroll/resize while open
+  // Update position on scroll/resize/keyboard while open
   useEffect(() => {
     if (!open) return
     const handler = () => updateRect()
     window.addEventListener('scroll', handler, true)
     window.addEventListener('resize', handler)
+    // iOS visual viewport changes when keyboard opens/closes
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', handler)
+    vv?.addEventListener('scroll', handler)
     return () => {
       window.removeEventListener('scroll', handler, true)
       window.removeEventListener('resize', handler)
+      vv?.removeEventListener('resize', handler)
+      vv?.removeEventListener('scroll', handler)
     }
   }, [open, updateRect])
 
@@ -230,10 +265,12 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
         background: '#fff',
         border: '1px solid var(--border)',
         borderRadius: '8px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+        boxShadow: dropdownRect.placement === 'above'
+          ? '0 -8px 32px rgba(0,0,0,0.14)'
+          : '0 8px 32px rgba(0,0,0,0.14)',
         zIndex: 9999,
         overflow: 'hidden',
-        maxHeight: 'min(320px, 50vh)',
+        maxHeight: `${Math.max(180, dropdownRect.maxHeight)}px`,
         overflowY: 'auto',
       }}
     >
