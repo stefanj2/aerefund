@@ -470,6 +470,36 @@ export default function UitkomstPage() {
       <div className="funnel-grid">
       <div>
 
+        {/* ⓪ Hero compensation amount — prominent at top for mobile conversion */}
+        {compensation.eligible && (
+          <div className="animate-fade-up" style={{
+            background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+            border: '1px solid #86efac',
+            borderRadius: '16px',
+            padding: '1.5rem 1.25rem',
+            marginBottom: '1.25rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 20px rgba(34,197,94,0.12)',
+          }}>
+            <p style={{
+              fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: '#047857', marginBottom: '0.5rem',
+            }}>
+              JOUW COMPENSATIE
+            </p>
+            <div style={{
+              fontFamily: 'var(--font-sora)', fontWeight: 900,
+              fontSize: 'clamp(2.25rem, 9vw, 3.5rem)',
+              color: '#047857', lineHeight: 1, marginBottom: '0.375rem',
+            }}>
+              €{totalAmount}
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#059669', margin: 0, fontWeight: 500 }}>
+              €{effectiveAmountPerPerson} × {passengers} passagier{passengers !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
+
         {/* ① Flight identity */}
         <div className="card animate-fade-up d1" style={{ padding: '0.875rem 1.125rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>

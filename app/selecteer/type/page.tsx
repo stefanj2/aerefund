@@ -61,13 +61,20 @@ export default function SelecteerTypePage() {
   const [params, setParams] = useState<RouteSearchParams | null>(null)
   const [selected, setSelected] = useState<FlightType | null>(null)
 
+  const [autoAdvancing, setAutoAdvancing] = useState(false)
+
   useEffect(() => {
     const raw = sessionStorage.getItem('vv_route_search')
     if (!raw) { router.replace('/'); return }
     const p = JSON.parse(raw) as RouteSearchParams
     setParams(p)
-    if (p.type) setSelected(p.type)
     trackFunnelStart(p.type ?? 'unknown')
+    if (p.type) {
+      setSelected(p.type)
+      setAutoAdvancing(true)
+      router.push('/selecteer/details')
+      return
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSelect(type: FlightType) {
@@ -95,6 +102,8 @@ export default function SelecteerTypePage() {
 
   const originName = params ? (AIRPORTS[params.origin]?.name ?? params.origin) : ''
   const destinationName = params ? (AIRPORTS[params.destination]?.name ?? params.destination) : ''
+
+  if (autoAdvancing) return null
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: '4rem' }}>
@@ -169,6 +178,24 @@ export default function SelecteerTypePage() {
               )
             })}
           </div>
+
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              background: 'none', border: 'none',
+              color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500,
+              cursor: 'pointer', padding: '0.75rem 0',
+              fontFamily: 'inherit',
+              marginTop: '1rem',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Terug
+          </button>
 
           <button
             onClick={handleNext}

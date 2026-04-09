@@ -473,8 +473,22 @@ export default function SelecteerVluchtPage() {
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
-            <button onClick={() => router.push('/selecteer/details')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
-              ← Terug
+            <button
+              type="button"
+              onClick={() => router.push('/selecteer/details')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: 'none', border: 'none',
+                color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500,
+                cursor: 'pointer', padding: '0.75rem 0',
+                fontFamily: 'inherit',
+                marginTop: '1rem',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Terug
             </button>
             <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
               Niet jouw vlucht? <a href="/" style={{ color: 'var(--blue)', textDecoration: 'none', fontWeight: 600 }}>Zoek opnieuw</a>

@@ -409,9 +409,13 @@ export default function SelecteerDetailsPage() {
                   </div>
                 )}
                 {(cancellationNotice === 'gt14days' || cancellationNotice === 'd7_13_ok' || cancellationNotice === 'lt7_ok') && (
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: '8px' }}>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--red)', margin: 0, lineHeight: 1.5 }}>
-                      <strong>Waarschijnlijk geen recht op compensatie</strong> op basis van de aankondiging. Ga toch door als je twijfelt — een jurist beoordeelt je zaak kosteloos.
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.25)', borderRadius: '8px', display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <circle cx="8" cy="8" r="6.5" stroke="#c2410c" strokeWidth="1.4" />
+                      <path d="M8 7.25v3.5M8 5.25v.01" stroke="#c2410c" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                    <p style={{ fontSize: '0.8rem', color: '#9a3412', margin: 0, lineHeight: 1.5 }}>
+                      Onder EC 261/2004 heb je mogelijk minder rechten, maar we controleren ook andere gronden (zoals vertragingen tot bestemming of gederfde voorzieningen). Ga gerust door — onze juristen beoordelen je zaak kosteloos.
                     </p>
                   </div>
                 )}
@@ -449,6 +453,23 @@ export default function SelecteerDetailsPage() {
           {/* Doorgaan button */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             <button
+              type="button"
+              onClick={() => router.push('/selecteer/type')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: 'none', border: 'none',
+                color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500,
+                cursor: 'pointer', padding: '0.75rem 0',
+                fontFamily: 'inherit',
+                marginTop: '1rem',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Terug
+            </button>
+            <button
               onClick={() => { if (!canProceed || !params) return; trackDetailsComplete({ claimType: params.type ?? '', hasStopover: stopover === 'yes', date: params.date ?? '' }); router.push('/selecteer/vlucht') }}
               disabled={!canProceed}
               className="btn-cta"
@@ -458,9 +479,6 @@ export default function SelecteerDetailsPage() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </button>
-            <button onClick={() => router.push('/selecteer/type')} className="btn-secondary">
-              ← Terug
             </button>
           </div>
 

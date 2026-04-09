@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { lookupFlight } from '@/lib/flight-api'
 import { calculateCompensation } from '@/lib/compensation'
 import { isEuCarrier } from '@/lib/airlines'
 import FunnelNav from '@/components/FunnelNav'
-import type { FlightData } from '@/lib/types'
+import type { FlightData, FlightType } from '@/lib/types'
 
 
 // EC 261: first leg with delay is the responsible carrier (first-carrier principle)
@@ -30,69 +30,58 @@ function computeArrivalDelay(flight: FlightData): number | null {
   return flight.delayMinutes
 }
 
-const STEPS_VERTRAAGD = [
-  { label: 'Vluchtdata ophalen…', duration: 1200 },
-  { label: 'Aankomstvertraging meten…', duration: 1000 },
-  { label: 'EC 261/2004 toetsen…', duration: 900 },
-  { label: 'Compensatiebedrag berekenen…', duration: 700 },
-]
-
-const STEPS_GEANNULEERD = [
-  { label: 'Vluchtgegevens ophalen…', duration: 1200 },
-  { label: 'Annulering bevestigen…', duration: 800 },
-  { label: 'EC 261/2004 toetsen…', duration: 900 },
-  { label: 'Compensatiebedrag berekenen…', duration: 700 },
-]
-
-const STEPS_GEWEIGERD = [
-  { label: 'Vluchtgegevens ophalen…', duration: 1200 },
-  { label: 'Instapweigering controleren…', duration: 800 },
-  { label: 'EC 261/2004 toetsen…', duration: 900 },
-  { label: 'Compensatiebedrag berekenen…', duration: 700 },
-]
-
-const STEPS_DOWNGRADE = [
-  { label: 'Vluchtgegevens ophalen…', duration: 1200 },
-  { label: 'Klasse verlagen bevestigen…', duration: 800 },
-  { label: 'EC 261/2004 art. 10 toetsen…', duration: 900 },
-  { label: 'Vergoedingspercentage berekenen…', duration: 700 },
-]
+type SearchParams = {
+  flightNumber: string
+  flightNumbers?: string[]
+  flightNumber2?: string
+  date: string
+  type: FlightType
+  claimDistanceKm?: number
+  isConnecting?: boolean
+  prefetchedFlight?: FlightData
+  prefetchedFlights?: FlightData[]
+}
 
 type ScreenState = 'loading' | 'done' | 'not_found' | 'error'
 
 export default function LoadingScreen() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(0)
   const [state, setState] = useState<ScreenState>('loading')
-  const [search, setSearch] = useState<{
-    flightNumber: string
-    flightNumbers?: string[]
-    flightNumber2?: string
-    date: string
-    type?: string
-    claimDistanceKm?: number
-    isConnecting?: boolean
-  } | null>(null)
+  const [search, setSearch] = useState<SearchParams | null>(null)
   const [notFoundFlight, setNotFoundFlight] = useState<FlightData | null>(null)
+  const [statusMessage, setStatusMessage] = useState('Vluchtdata ophalen…')
+  const cancelledRef = useRef(false)
+  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  useEffect(() => {
-    let cancelled = false
-    const timeoutIds: ReturnType<typeof setTimeout>[] = []
+  const clearTimers = useCallback(() => {
+    timeoutIdsRef.current.forEach(clearTimeout)
+    timeoutIdsRef.current = []
+  }, [])
 
-    const raw = sessionStorage.getItem('vv_search')
-    if (!raw) {
-      router.replace('/')
-      return
-    }
+  const runLookup = useCallback((parsed: SearchParams) => {
+    cancelledRef.current = false
+    clearTimers()
+    setState('loading')
+    setNotFoundFlight(null)
 
-    const parsed = JSON.parse(raw)
-    setSearch(parsed)
+    // Derive initial status based on claim type
+    const initialStatus =
+      parsed.type === 'geannuleerd' ? 'Vluchtgegevens ophalen…' :
+      parsed.type === 'geweigerd'   ? 'Vluchtgegevens ophalen…' :
+      parsed.type === 'downgrade'   ? 'Vluchtgegevens ophalen…' :
+      'Vluchtdata ophalen…'
+    setStatusMessage(initialStatus)
 
-    const STEPS =
-      parsed.type === 'geannuleerd' ? STEPS_GEANNULEERD :
-      parsed.type === 'geweigerd'   ? STEPS_GEWEIGERD   :
-      parsed.type === 'downgrade'   ? STEPS_DOWNGRADE   :
-      STEPS_VERTRAAGD
+    // Progressive status messages for slow API responses
+    timeoutIdsRef.current.push(setTimeout(() => {
+      if (!cancelledRef.current) setStatusMessage('Nog even geduld…')
+    }, 2000))
+    timeoutIdsRef.current.push(setTimeout(() => {
+      if (!cancelledRef.current) setStatusMessage('Bijna klaar…')
+    }, 4500))
+
+    const startedAt = Date.now()
+    const MIN_LOADING_MS = 1000
 
     // Resolve which flight data to use, applying EC 261 first-carrier principle for multi-leg
     const apiPromise: Promise<FlightData | null> = (() => {
@@ -135,91 +124,123 @@ export default function LoadingScreen() {
       return lookupFlight(parsed.flightNumber, parsed.date, parsed.type).catch(() => null)
     })()
 
-    let step = 0
-    const advance = () => {
-      if (cancelled) return
-      if (step < STEPS.length - 1) {
-        step++
-        setCurrentStep(step)
-        timeoutIds.push(setTimeout(advance, STEPS[step].duration))
-      } else {
-        apiPromise.then((flightData) => {
-          if (cancelled) return
+    const finalize = (flightData: FlightData | null) => {
+      if (cancelledRef.current) return
+      clearTimers()
 
-          if (!flightData) {
-            setState('error')
-            return
-          }
-
-          // Lees eligibility-verfijners die op /selecteer zijn ingevuld
-          const routeRaw = sessionStorage.getItem('vv_route_search')
-          const routeParams = routeRaw ? JSON.parse(routeRaw) : {}
-
-          if (!flightData.found) {
-            // Geannuleerde en geweigerde vluchten zijn altijd eligible ongeacht API-data —
-            // proceed automatisch naar uitkomst zonder de "niet gevonden" foutmelding te tonen.
-            if (parsed.type === 'geannuleerd' || parsed.type === 'geweigerd' || parsed.type === 'downgrade') {
-              const distKm = parsed.claimDistanceKm ?? flightData.distanceKm
-              const prefix = flightData.iataPrefix ?? ''
-              const comp = calculateCompensation(distKm, null, parsed.type, false, {
-                origin:             flightData.origin      ?? routeParams.origin,
-                destination:        flightData.destination ?? routeParams.destination,
-                carrierIsEu:        isEuCarrier(prefix),
-                cancellationNotice: routeParams.cancellationNotice,
-                causeType:          routeParams.causeType,
-                ticketPriceEur:     routeParams.ticketPriceEur,
-              })
-              sessionStorage.setItem('vv_result', JSON.stringify({ flight: { ...flightData, distanceKm: distKm }, compensation: comp }))
-              setState('done')
-              timeoutIds.push(setTimeout(() => { if (!cancelled) router.push('/uitkomst') }, 800))
-              return
-            }
-            setNotFoundFlight(flightData)
-            setState('not_found')
-            return
-          }
-
-          // Override distance for connecting flights (EC 261: total journey distance)
-          const effectiveDistanceKm =
-            parsed.claimDistanceKm != null ? parsed.claimDistanceKm : flightData.distanceKm
-
-          // EC 261 kijkt naar AANKOMSTVERTRAGING, niet vertrekvertraging.
-          // Gebruik scheduledArrival + actualArrival indien beschikbaar.
-          const effectiveDelay = computeArrivalDelay(flightData)
-
-          const carrierPrefix = flightData.iataPrefix ?? ''
-          const compensation = calculateCompensation(
-            effectiveDistanceKm,
-            effectiveDelay,
-            parsed.type,
-            flightData.found,
-            {
-              origin:             flightData.origin      ?? routeParams.origin,
-              destination:        flightData.destination ?? routeParams.destination,
-              carrierIsEu:        isEuCarrier(carrierPrefix),
-              cancellationNotice: routeParams.cancellationNotice,
-              causeType:          routeParams.causeType,
-              ticketPriceEur:     routeParams.ticketPriceEur,
-            }
-          )
-          sessionStorage.setItem(
-            'vv_result',
-            JSON.stringify({ flight: { ...flightData, distanceKm: effectiveDistanceKm, delayMinutes: effectiveDelay }, compensation })
-          )
-          setState('done')
-          timeoutIds.push(setTimeout(() => { if (!cancelled) router.push('/uitkomst') }, 800))
-        })
+      if (!flightData) {
+        setState('error')
+        return
       }
+
+      // Lees eligibility-verfijners die op /selecteer zijn ingevuld
+      const routeRaw = sessionStorage.getItem('vv_route_search')
+      const routeParams = routeRaw ? JSON.parse(routeRaw) : {}
+
+      if (!flightData.found) {
+        // Geannuleerde en geweigerde vluchten zijn altijd eligible ongeacht API-data —
+        // proceed automatisch naar uitkomst zonder de "niet gevonden" foutmelding te tonen.
+        if (parsed.type === 'geannuleerd' || parsed.type === 'geweigerd' || parsed.type === 'downgrade') {
+          const distKm = parsed.claimDistanceKm ?? flightData.distanceKm
+          const prefix = flightData.iataPrefix ?? ''
+          const comp = calculateCompensation(distKm, null, parsed.type, false, {
+            origin:             flightData.origin      ?? routeParams.origin,
+            destination:        flightData.destination ?? routeParams.destination,
+            carrierIsEu:        isEuCarrier(prefix),
+            cancellationNotice: routeParams.cancellationNotice,
+            causeType:          routeParams.causeType,
+            ticketPriceEur:     routeParams.ticketPriceEur,
+          })
+          sessionStorage.setItem('vv_result', JSON.stringify({ flight: { ...flightData, distanceKm: distKm }, compensation: comp }))
+          setState('done')
+          timeoutIdsRef.current.push(setTimeout(() => { if (!cancelledRef.current) router.push('/uitkomst') }, 800))
+          return
+        }
+        setNotFoundFlight(flightData)
+        setState('not_found')
+        return
+      }
+
+      // Override distance for connecting flights (EC 261: total journey distance)
+      const effectiveDistanceKm =
+        parsed.claimDistanceKm != null ? parsed.claimDistanceKm : flightData.distanceKm
+
+      // EC 261 kijkt naar AANKOMSTVERTRAGING, niet vertrekvertraging.
+      // Gebruik scheduledArrival + actualArrival indien beschikbaar.
+      const effectiveDelay = computeArrivalDelay(flightData)
+
+      const carrierPrefix = flightData.iataPrefix ?? ''
+      const compensation = calculateCompensation(
+        effectiveDistanceKm,
+        effectiveDelay,
+        parsed.type,
+        flightData.found,
+        {
+          origin:             flightData.origin      ?? routeParams.origin,
+          destination:        flightData.destination ?? routeParams.destination,
+          carrierIsEu:        isEuCarrier(carrierPrefix),
+          cancellationNotice: routeParams.cancellationNotice,
+          causeType:          routeParams.causeType,
+          ticketPriceEur:     routeParams.ticketPriceEur,
+        }
+      )
+      sessionStorage.setItem(
+        'vv_result',
+        JSON.stringify({ flight: { ...flightData, distanceKm: effectiveDistanceKm, delayMinutes: effectiveDelay }, compensation })
+      )
+      setState('done')
+      timeoutIdsRef.current.push(setTimeout(() => { if (!cancelledRef.current) router.push('/uitkomst') }, 800))
     }
 
-    timeoutIds.push(setTimeout(advance, STEPS[0].duration))
+    apiPromise.then((flightData) => {
+      if (cancelledRef.current) return
+      // Enforce minimum loading time to avoid flash
+      const elapsed = Date.now() - startedAt
+      const remaining = Math.max(0, MIN_LOADING_MS - elapsed)
+      if (remaining === 0) {
+        finalize(flightData)
+      } else {
+        timeoutIdsRef.current.push(setTimeout(() => finalize(flightData), remaining))
+      }
+    }).catch(() => {
+      if (cancelledRef.current) return
+      clearTimers()
+      setState('error')
+    })
+  }, [clearTimers, router])
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('vv_search')
+    if (!raw) {
+      router.replace('/')
+      return
+    }
+
+    const parsed = JSON.parse(raw) as SearchParams
+    setSearch(parsed)
+    runLookup(parsed)
 
     return () => {
-      cancelled = true
-      timeoutIds.forEach(clearTimeout)
+      cancelledRef.current = true
+      clearTimers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const handleRetry = useCallback(() => {
+    if (!search) {
+      const raw = sessionStorage.getItem('vv_search')
+      if (!raw) {
+        router.replace('/')
+        return
+      }
+      const parsed = JSON.parse(raw) as SearchParams
+      setSearch(parsed)
+      runLookup(parsed)
+      return
+    }
+    runLookup(search)
+  }, [search, runLookup, router])
 
   // ── Niet gevonden ──────────────────────────────────────────────────────────
   if (state === 'not_found') {
@@ -306,9 +327,35 @@ export default function LoadingScreen() {
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
             We konden de vluchtdata niet ophalen. Controleer je internetverbinding en probeer opnieuw.
           </p>
-          <button onClick={() => router.replace('/')} className="btn-primary" style={{ maxWidth: '240px' }}>
+          <button
+            type="button"
+            onClick={handleRetry}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+              background: 'var(--blue)', color: '#fff',
+              border: 'none', borderRadius: '10px',
+              padding: '0.875rem 1.5rem',
+              fontFamily: 'var(--font-sora)', fontWeight: 700, fontSize: '0.9375rem',
+              cursor: 'pointer',
+              marginTop: '1rem',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M14 2v4h-4M2 14v-4h4M14 6a6 6 0 0 0-11.2-2M2 10a6 6 0 0 0 11.2 2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             Opnieuw proberen
           </button>
+          <div>
+            <a
+              href="/selecteer/vlucht"
+              style={{
+                display: 'inline-block', marginTop: '0.75rem',
+                color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'underline',
+              }}
+            >
+              Of ga terug en probeer een andere vlucht
+            </a>
+          </div>
         </div>
       </div>
     )
@@ -316,19 +363,16 @@ export default function LoadingScreen() {
 
   // ── Laden / Klaar ──────────────────────────────────────────────────────────
   const spinnerColor = state === 'done' ? 'var(--green)' : 'var(--blue)'
-
-  // Derive step labels based on flight type (for render)
-  const STEPS =
-    search?.type === 'geannuleerd' ? STEPS_GEANNULEERD :
-    search?.type === 'geweigerd'   ? STEPS_GEWEIGERD   :
-    search?.type === 'downgrade'   ? STEPS_DOWNGRADE   :
-    STEPS_VERTRAAGD
+  const headingText = state === 'done' ? 'Klaar!' : statusMessage
+  const flightLabel = search?.flightNumber
+    ? `Bezig met ${search.flightNumber}…`
+    : null
 
   return (
     <div style={{ minHeight: 'calc(100vh - 59px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.25rem' }}>
 
       {/* Spinner ring */}
-      <div style={{ position: 'relative', marginBottom: '2.5rem' }}>
+      <div style={{ position: 'relative', marginBottom: '1.75rem', width: '80px', height: '80px' }}>
         {/* Track */}
         <div style={{
           width: '80px', height: '80px', borderRadius: '50%',
@@ -342,6 +386,7 @@ export default function LoadingScreen() {
           borderTopColor: spinnerColor,
           animation: state === 'done' ? 'none' : 'loading-spin 0.9s linear infinite',
           transition: 'border-top-color 0.4s',
+          position: 'absolute', inset: 0,
         }} />
         {/* Center icon */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -357,51 +402,36 @@ export default function LoadingScreen() {
         </div>
       </div>
 
-      {/* Step list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', width: '100%', maxWidth: '340px' }}>
-        {STEPS.map((step, i) => {
-          const isDone = i < currentStep || state === 'done'
-          const isActive = i === currentStep && state !== 'done'
-          return (
-            <div
-              key={i}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.875rem',
-                opacity: i <= currentStep ? 1 : 0.3,
-                transition: 'opacity 0.4s',
-              }}
-            >
-              {/* Step dot */}
-              <div style={{
-                width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isDone ? 'var(--green)' : isActive ? 'var(--blue)' : 'var(--border)',
-                transition: 'background 0.3s',
-              }}>
-                {isDone ? (
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <div style={{
-                    width: '7px', height: '7px', borderRadius: '50%',
-                    background: isActive ? '#fff' : 'var(--text-muted)',
-                    animation: isActive ? 'pulse 1.2s ease-in-out infinite' : 'none',
-                  }} />
-                )}
-              </div>
-              {/* Label */}
-              <span style={{
-                fontSize: '0.875rem',
-                fontWeight: isActive ? 600 : 400,
-                color: isDone ? 'var(--green)' : isActive ? 'var(--text)' : 'var(--text-muted)',
-                transition: 'color 0.3s',
-              }}>
-                {step.label}
-              </span>
-            </div>
-          )
-        })}
+      {/* Status text (fades in on change via key) */}
+      <div
+        key={headingText}
+        style={{
+          textAlign: 'center',
+          animation: 'loading-fade 0.35s ease-out',
+          maxWidth: '340px',
+        }}
+      >
+        <h2 style={{
+          fontFamily: 'var(--font-sora)',
+          fontWeight: 700,
+          fontSize: '1.125rem',
+          color: 'var(--text)',
+          margin: 0,
+          lineHeight: 1.4,
+        }}>
+          {headingText}
+        </h2>
+        {flightLabel && state !== 'done' && (
+          <p style={{
+            fontSize: '0.875rem',
+            color: 'var(--text-muted)',
+            marginTop: '0.5rem',
+            marginBottom: 0,
+            fontFamily: 'var(--font-inter)',
+          }}>
+            {flightLabel}
+          </p>
+        )}
       </div>
 
 
@@ -410,9 +440,9 @@ export default function LoadingScreen() {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
         }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(0.8); }
+        @keyframes loading-fade {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
