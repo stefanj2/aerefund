@@ -298,8 +298,8 @@ const [postalCode, setPostalCode]   = useState('')
             </div>
           </div>
 
-          {/* Step indicator — sticky on mobile so user always knows where they are */}
-          <div style={{
+          {/* Step indicator — sticky on desktop, static on mobile to save vertical space */}
+          <div className="step-indicator" style={{
             display: 'flex', gap: '0', marginBottom: '1.75rem',
             background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
             overflow: 'hidden',
@@ -317,7 +317,8 @@ const [postalCode, setPostalCode]   = useState('')
                   onClick={() => num < step && setStep(num)}
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: '0.4rem', padding: '0.625rem 0.5rem',
+                    gap: '0.4rem', padding: '0.875rem 0.5rem',
+                    minHeight: '48px',
                     background: isActive ? 'var(--blue-light)' : isDone ? 'var(--green-dim)' : 'transparent',
                     border: 'none',
                     borderRight: i < 2 ? '1px solid var(--border)' : 'none',
@@ -418,7 +419,7 @@ const [postalCode, setPostalCode]   = useState('')
                     <input className="input-field" type="text" value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
                       onBlur={() => lookupAddress(postalCode, houseNumber)}
-                      placeholder="1234 AB" maxLength={7} autoComplete="postal-code" />
+                      placeholder="1234 AB" maxLength={7} autoComplete="postal-code" inputMode="text" />
                     <FieldError msg={errors.postalCode} />
                     {!errors.postalCode && !postalCode && (
                       <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
@@ -432,7 +433,7 @@ const [postalCode, setPostalCode]   = useState('')
                       <input className="input-field" type="text" value={houseNumber}
                         onChange={(e) => setHouseNumber(e.target.value)}
                         onBlur={() => lookupAddress(postalCode, houseNumber)}
-                        placeholder="1" maxLength={6} style={{ flex: '1 1 50%' }} autoComplete="address-line1" />
+                        placeholder="1" maxLength={6} style={{ flex: '1 1 50%' }} autoComplete="address-line1" inputMode="numeric" pattern="[0-9]*" />
                       <input className="input-field" type="text" value={houseSuffix}
                         onChange={(e) => setHouseSuffix(e.target.value)}
                         placeholder="Toev." maxLength={8} style={{ flex: '1 1 40%', color: 'var(--text-muted)' }} autoComplete="address-line2" />

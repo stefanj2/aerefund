@@ -609,7 +609,7 @@ export default function UitkomstPage() {
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)' }}>€</span>
                     <input
-                      type="number" min="0" step="1" value={downgradeTicketPrice}
+                      type="number" min="0" step="1" inputMode="decimal" value={downgradeTicketPrice}
                       onChange={e => setDowngradeTicketPrice(e.target.value)}
                       placeholder="ticketprijs"
                       style={{

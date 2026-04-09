@@ -199,7 +199,7 @@ export default function SelecteerDetailsPage() {
                 onChange={e => handleDateChange(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 min={new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                className="input-field"
+                className="input-field full-width-mobile"
                 style={{ colorScheme: 'light', maxWidth: '220px' }}
               />
               {params.date && (
@@ -265,8 +265,8 @@ export default function SelecteerDetailsPage() {
                       </div>
                       <button type="button" onClick={() => removeVia(idx)} style={{
                         background: 'none', border: '1.5px solid var(--border)', borderRadius: '8px',
-                        padding: '0.625rem 0.75rem', cursor: 'pointer', color: 'var(--text-muted)',
-                        fontSize: '0.8rem', fontWeight: 600,
+                        padding: '0.75rem 1rem', cursor: 'pointer', color: 'var(--text-muted)',
+                        fontSize: '0.8rem', fontWeight: 600, minHeight: '44px',
                       }}>
                         Verwijder
                       </button>
@@ -288,7 +288,7 @@ export default function SelecteerDetailsPage() {
                         />
                       </div>
                       {viaAirports.length > 0 && (
-                        <button type="button" onClick={() => setAddingVia(false)} style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <button type="button" onClick={() => setAddingVia(false)} style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem 0', minHeight: '44px' }}>
                           Annuleer
                         </button>
                       )}
