@@ -32,12 +32,12 @@ function BetalenContent() {
       <div style={{ background: '#ffffff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', maxWidth: '520px', width: '100%', overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ background: '#ffffff', padding: '28px 32px 20px', borderBottom: '1px solid #e5e7eb', textAlign: 'center' }}>
+        <div style={{ background: '#ffffff', padding: 'clamp(20px, 5vw, 28px) clamp(16px, 5vw, 32px) 20px', borderBottom: '1px solid #e5e7eb', textAlign: 'center' }}>
           <Image src="/logo-aerefund.png" alt="Aerefund" width={160} height={48} style={{ height: '48px', width: 'auto', display: 'inline-block' }} />
         </div>
 
         {/* Body */}
-        <div style={{ padding: '28px 32px' }}>
+        <div style={{ padding: 'clamp(20px, 5vw, 28px) clamp(16px, 5vw, 32px)' }}>
           {/* Green badge */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '99px', padding: '6px 14px', marginBottom: '20px' }}>
             <span style={{ color: '#16a34a', fontSize: '13px', fontWeight: 700 }}>✓ Claim ingediend</span>
@@ -51,7 +51,7 @@ function BetalenContent() {
           </p>
 
           {/* Invoice card */}
-          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '18px 20px', marginBottom: '24px' }}>
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: 'clamp(14px, 4vw, 18px) clamp(14px, 4vw, 20px)', marginBottom: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {ref && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

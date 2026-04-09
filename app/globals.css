@@ -596,8 +596,11 @@ input[type="date"].input-field {
   .container-wide { padding-left: 1rem !important; padding-right: 1rem !important; }
   .hero-submit-btn { padding: 0.875rem 1.25rem !important; height: auto !important; }
   .step-indicator { position: static !important; margin-bottom: 1rem !important; }
-  .hero-section { min-height: auto !important; }
+  .hero-section { min-height: auto !important; padding: 0 !important; }
   .hero-content { padding: 1rem 0 2rem !important; }
+
+  /* Reduce generic section padding on mobile (but not hero) */
+  section:not(.hero-section) { padding-top: 2.5rem !important; padding-bottom: 2.5rem !important; }
 
   /* Prevent iOS zoom on input focus — all inputs must be ≥16px on mobile */
   input[type="text"],

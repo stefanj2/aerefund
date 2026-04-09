@@ -136,7 +136,7 @@ export default function VliegtuigmaatschappijenPage() {
                 {/* Cards */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
                   gap: '0.75rem',
                 }}>
                   {regionAirlines.map(({ iata, cfg, slug }) => {
