@@ -105,12 +105,12 @@ export default function SelecteerTypePage() {
 
           {/* Route hero strip */}
           {params && (
-            <div className="animate-fade-up d1" style={{
+            <div className="animate-fade-up d1 route-strip" style={{
               background: '#fff', border: '1px solid var(--border)', borderRadius: '14px',
               padding: '1.25rem 1.5rem', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.375rem', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: '2rem', color: 'var(--navy)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                <span className="route-iata" style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: '2rem', color: 'var(--navy)', letterSpacing: '-0.02em', lineHeight: 1 }}>
                   {params.origin}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', background: 'var(--blue-light)', borderRadius: '6px', padding: '0.25rem 0.625rem' }}>
@@ -118,11 +118,11 @@ export default function SelecteerTypePage() {
                     <path d="M0 5h20M16 2l4 3-4 3" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <span style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: '2rem', color: 'var(--navy)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                <span className="route-iata" style={{ fontFamily: 'var(--font-sora)', fontWeight: 900, fontSize: '2rem', color: 'var(--navy)', letterSpacing: '-0.02em', lineHeight: 1 }}>
                   {params.destination}
                 </span>
               </div>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <span className="route-names" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 {originName} → {destinationName}
               </span>
             </div>

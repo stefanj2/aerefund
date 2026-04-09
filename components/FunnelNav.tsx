@@ -110,7 +110,7 @@ export default function FunnelNav({ step, progress, flightInfo, badge }: Props) 
 
                   {/* Connector */}
                   {i < STEPS.length - 1 && (
-                    <div style={{
+                    <div className="step-connector" style={{
                       width: '2rem', height: '1.5px', margin: '0 0.375rem',
                       background: num < step ? 'var(--blue)' : 'var(--border)',
                       transition: 'background 0.3s',
@@ -164,8 +164,9 @@ export default function FunnelNav({ step, progress, flightInfo, badge }: Props) 
       </div>
 
       <style jsx>{`
-        @media (max-width: 440px) {
+        @media (max-width: 640px) {
           .step-label { display: none !important; }
+          .step-connector { width: 1rem !important; margin: 0 0.25rem !important; }
         }
       `}</style>
     </header>
