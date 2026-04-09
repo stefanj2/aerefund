@@ -417,6 +417,13 @@ input[type="date"].input-field {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+.sticky-cta-bar.visible {
+  transform: translateY(0);
+  pointer-events: auto;
 }
 @media (min-width: 640px) { .sticky-cta-bar { display: none !important; } }
 
@@ -587,6 +594,7 @@ input[type="date"].input-field {
   .gap-mobile-sm { gap: 0.75rem !important; }
   .text-center-mobile { text-align: center !important; }
   .container-wide { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .hero-submit-btn { padding: 0.875rem 1.25rem !important; height: auto !important; }
 }
 
 @media (max-width: 768px) {

@@ -56,8 +56,9 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
           }}>
             Wat is er mis met je vlucht?
           </p>
-          <div className="wrap-mobile" style={{
-            display: 'inline-flex',
+          <div className="type-selector" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
             background: '#f0f4f8',
             borderRadius: '10px',
             padding: '3px',
@@ -69,18 +70,19 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
                 type="button"
                 onClick={() => setType(value)}
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.5rem 0.5rem',
                   borderRadius: '7px',
                   border: 'none',
                   background: type === value ? '#fff' : 'transparent',
                   color: type === value ? 'var(--navy)' : 'var(--text-muted)',
-                  fontSize: '0.8125rem',
+                  fontSize: '0.78rem',
                   fontWeight: type === value ? 700 : 500,
                   fontFamily: 'var(--font-sora)',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
-                  whiteSpace: 'nowrap',
                   boxShadow: type === value ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                  textAlign: 'center',
+                  minWidth: 0,
                 }}
               >
                 {label}
@@ -142,7 +144,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
           <button
             type="submit"
             disabled={loading}
-            className="full-width-mobile"
+            className="full-width-mobile hero-submit-btn"
             style={{
               flexShrink: 0,
               background: 'var(--blue)',
@@ -155,6 +157,7 @@ export default function HeroSearchForm({ defaultType = 'vertraagd' }: { defaultT
               cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem',
               transition: 'background 0.15s',
               opacity: loading ? 0.8 : 1,

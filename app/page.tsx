@@ -2,6 +2,7 @@ import Image from 'next/image'
 import AnalyseForm from '@/components/AnalyseForm'
 import HeroSearchForm from '@/components/HeroSearchForm'
 import SiteNav from '@/components/SiteNav'
+import StickyCta from '@/components/StickyCta'
 import { REVIEWS } from '@/data/reviews'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -899,12 +900,8 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Sticky mobile CTA */}
-      <div className="sticky-cta-bar">
-        <a href="#form" className="btn-primary" style={{ fontSize: '0.9rem' }}>
-          Check compensatie →
-        </a>
-      </div>
+      {/* Sticky mobile CTA — only shows after scrolling past hero */}
+      <StickyCta />
 
     </main>
   )
