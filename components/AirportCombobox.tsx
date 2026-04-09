@@ -139,9 +139,27 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
   const [open, setOpen] = useState(false)
   const [dropdownRect, setDropdownRect] = useState<DropdownRect | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mobileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    setMounted(true)
+    const check = () => setIsMobile(window.innerWidth <= 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Focus mobile input when opened, lock body scroll
+  useEffect(() => {
+    if (isMobile && open) {
+      document.body.style.overflow = 'hidden'
+      // Small delay to ensure the element is mounted
+      setTimeout(() => mobileInputRef.current?.focus(), 50)
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [isMobile, open])
 
   const selectedAirport = AIRPORTS[value] ?? null
   const displayValue = open
@@ -198,6 +216,15 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
     updateRect()
     setQuery('')
     setOpen(true)
+    // On mobile, blur the underlying input so only the overlay keyboard shows
+    if (typeof window !== 'undefined' && window.innerWidth <= 640) {
+      setTimeout(() => {
+        const active = document.activeElement as HTMLElement | null
+        if (active && active.tagName === 'INPUT' && active !== mobileInputRef.current) {
+          active.blur()
+        }
+      }, 0)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -255,7 +282,159 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
     ? `Populair vanaf ${contextIata}`
     : 'Nederlandse luchthavens'
 
-  const dropdown = open && filtered.length > 0 && dropdownRect && (
+  // ── Mobile full-screen overlay ─────────────────────────
+  const mobileOverlay = open && isMobile && (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#fff',
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {/* Header with back button + input */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '0.5rem',
+        padding: '0.75rem 1rem',
+        borderBottom: '1px solid var(--border)',
+        background: '#fff',
+        flexShrink: 0,
+      }}>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setQuery('') }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '40px', height: '40px', borderRadius: '8px',
+            background: '#f8f9fb', border: '1px solid var(--border)',
+            cursor: 'pointer', flexShrink: 0,
+          }}
+          aria-label="Sluiten"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M12 4L6 9l6 5" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: '#f8f9fb', borderRadius: '8px',
+          border: '1px solid var(--border)',
+          padding: '0 0.875rem',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+            <circle cx="7" cy="7" r="5" stroke="#94a3b8" strokeWidth="1.5" />
+            <path d="M14 14l-3-3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            ref={mobileInputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+            spellCheck={false}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: '16px',
+              color: 'var(--text)',
+              background: 'transparent',
+              fontFamily: 'inherit',
+              padding: '0.75rem 0',
+              minWidth: 0,
+            }}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '24px', height: '24px', borderRadius: '50%',
+                background: '#e2e8f0', border: 'none',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+              aria-label="Wissen"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 2l6 6M8 2l-6 6" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Section label */}
+      <div style={{
+        padding: '0.75rem 1rem 0.5rem',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        letterSpacing: '0.05em',
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+        background: '#fff',
+        flexShrink: 0,
+      }}>
+        {sectionLabel}
+      </div>
+
+      {/* Results list */}
+      <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
+        {filtered.length === 0 ? (
+          <p style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            Geen resultaten voor &ldquo;{query}&rdquo;
+          </p>
+        ) : filtered.map(ap => (
+          <button
+            key={ap.iata}
+            type="button"
+            onClick={() => handleSelect(ap)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              width: '100%',
+              padding: '0.875rem 1rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: '1px solid #f1f5f9',
+              cursor: 'pointer',
+              textAlign: 'left',
+              minHeight: '56px',
+            }}
+          >
+            <span style={{ fontSize: '1.375rem', flexShrink: 0, lineHeight: 1 }}>
+              {countryFlag(ap.country)}
+            </span>
+            <span style={{
+              fontWeight: 800,
+              fontSize: '0.875rem',
+              color: 'var(--blue)',
+              flexShrink: 0,
+              minWidth: '2.5rem',
+              fontFamily: 'var(--font-sora)',
+            }}>
+              {ap.iata}
+            </span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '0.9375rem', color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {ap.name}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                {countryName(ap.country)}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  // ── Desktop inline dropdown ─────────────────────────
+  const dropdown = open && !isMobile && filtered.length > 0 && dropdownRect && (
     <div
       style={{
         position: 'fixed',
@@ -359,7 +538,13 @@ export default function AirportCombobox({ value, onChange, placeholder, icon, in
         />
       </div>
 
-      {mounted && createPortal(dropdown, document.body)}
+      {mounted && createPortal(
+        <>
+          {mobileOverlay}
+          {dropdown}
+        </>,
+        document.body
+      )}
     </div>
   )
 }
